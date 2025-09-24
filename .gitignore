@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+
+# Ambiente virtual
+venv/
+env/
+.venv/
+
+# Arquivos temporários do sistema
+.DS_Store
+Thumbs.db
+
+# Pastas de uploads ou arquivos gerados
+uploads/
+
+# Configurações locais
+*.env
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
