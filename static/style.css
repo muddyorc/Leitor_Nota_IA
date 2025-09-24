@@ -1,0 +1,152 @@
+/* ====== RESET ====== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #121212;
+  color: #e0e0e0;
+  padding: 20px;
+}
+
+/* ====== CONTAINER ====== */
+.container {
+  max-width: 850px;
+  margin: auto;
+  background: #1e1e1e;
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 0 25px rgba(0,0,0,0.5);
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+h1 {
+  text-align: center;
+  color: #ffffff;
+  margin-bottom: 25px;
+  font-size: 1.8rem;
+}
+
+/* ====== FORM ====== */
+form {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: #bbbbbb;
+}
+
+input[type="file"] {
+  background: #2c2c2c;
+  border: 1px solid #444;
+  color: #bbb;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button {
+  background: #0d6efd;
+  color: #fff;
+  padding: 10px 20px;
+  margin-top: 15px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  background: #0b5ed7;
+  transform: scale(1.05);
+}
+
+/* ====== RESULTADO ====== */
+#resultado {
+  margin-top: 30px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+/* ====== ABAS ====== */
+.tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.tabs button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #2c2c2c;
+  color: #bbb;
+  font-weight: bold;
+  transition: all 0.3s;
+  cursor: pointer;
+  margin: 0 5px;
+}
+
+.tabs button:hover {
+  background: #3a3a3a;
+  color: #fff;
+}
+
+.tabs button.active {
+  background: #0d6efd;
+  color: #fff;
+}
+
+/* ====== CONTEÚDO ====== */
+.tab-content {
+  background: #181818;
+  border-radius: 10px;
+  padding: 20px;
+  color: #ddd;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+pre {
+  background: #0f0f0f;
+  padding: 15px;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  color: #76ff76;
+}
+
+/* ====== ANIMAÇÃO ====== */
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(10px);}
+  to {opacity: 1; transform: translateY(0);}
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: #242424;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+}
+
+.card h3 {
+  margin-bottom: 10px;
+  color: #0d6efd;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
