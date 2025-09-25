@@ -122,7 +122,35 @@ setup_and_run.bat
 
 ---
 
-## 📄 Considerações Finais
+## � Pré-requisitos de OCR (Tesseract)
+
+Se o PDF não tiver texto embutido (apenas imagem), a aplicação usa OCR via `pytesseract` + binário `tesseract`.
+
+O script `setup_and_run.sh` tenta instalar automaticamente o Tesseract nas distros mais comuns (apt/dnf/pacman) quando você concorda. Caso prefira instalar manualmente:
+
+- Debian/Ubuntu:
+```bash
+sudo apt update && sudo apt install -y tesseract-ocr tesseract-ocr-por tesseract-ocr-eng poppler-utils
+```
+
+- Fedora:
+```bash
+sudo dnf install -y tesseract tesseract-langpack-por tesseract-langpack-eng poppler-utils
+```
+
+- Arch/Manjaro:
+```bash
+sudo pacman -S tesseract tesseract-data-por tesseract-data-eng poppler
+```
+
+Se ainda aparecer a mensagem "tesseract is not installed or it's not in your PATH":
+- Verifique se `tesseract` executa no terminal: `tesseract --version`.
+- Reabra o terminal e rode novamente o script para atualizar o PATH da sessão.
+- Em WSL/containers, confirme se o pacote foi instalado dentro do mesmo ambiente do Python.
+
+---
+
+## �📄 Considerações Finais
 
 O NotaFiscalAI é modular, com código organizado em pastas (`services`, `config`, `uploads`, `templates`, `static`), seguindo boas práticas de desenvolvimento e fácil manutenção.
 

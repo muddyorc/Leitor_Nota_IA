@@ -40,15 +40,46 @@ fi
 echo "==> Verificando tesseract-ocr (para OCR opcional)..."
 if ! command -v tesseract >/dev/null 2>&1; then
   echo "AVISO: 'tesseract' não encontrado. O OCR ficará desabilitado."
-  echo "Para instalar o tesseract-ocr, use um dos comandos abaixo conforme sua distribuição:"
-  if command -v apt >/dev/null 2>&1; then
-    echo "  sudo apt update && sudo apt install -y tesseract-ocr"
-  elif command -v dnf >/dev/null 2>&1; then
-    echo "  sudo dnf install -y tesseract"
-  elif command -v pacman >/dev/null 2>&1; then
-    echo "  sudo pacman -S tesseract"
+  if [ -t 0 ]; then
+    echo -n "Deseja que eu tente instalar automaticamente? [s/N]: "
+    read -r INSTALL_TESS
   else
-    echo "  Consulte a documentação da sua distribuição para instalar 'tesseract-ocr'."
+    INSTALL_TESS="n"
+  fi
+
+  if [[ "${INSTALL_TESS,,}" == "s" || "${INSTALL_TESS,,}" == "sim" ]]; then
+    if command -v apt >/dev/null 2>&1; then
+      echo "==> Instalando via apt..."
+      # Tenta atualizar, mas não falha se algum PPA estiver quebrado
+      sudo apt update || true
+      # Tenta instalar mesmo se o update falhar
+      sudo apt install -y tesseract-ocr tesseract-ocr-por tesseract-ocr-eng poppler-utils || true
+    elif command -v dnf >/dev/null 2>&1; then
+      echo "==> Instalando via dnf..."
+      sudo dnf install -y tesseract tesseract-langpack-por tesseract-langpack-eng poppler-utils || true
+    elif command -v pacman >/dev/null 2>&1; then
+      echo "==> Instalando via pacman..."
+      sudo pacman -S --noconfirm tesseract tesseract-data-por tesseract-data-eng poppler || true
+    else
+      echo "Não foi possível detectar o gerenciador de pacotes. Instale o 'tesseract-ocr' manualmente."
+    fi
+
+    if command -v tesseract >/dev/null 2>&1; then
+      echo "Instalação do tesseract concluída com sucesso."
+    else
+      echo "Falha ao instalar tesseract automaticamente. Consulte o README para instruções manuais."
+    fi
+  else
+    echo "Você pode instalar manualmente conforme sua distribuição:"
+    if command -v apt >/dev/null 2>&1; then
+      echo "  sudo apt update && sudo apt install -y tesseract-ocr tesseract-ocr-por tesseract-ocr-eng poppler-utils"
+    elif command -v dnf >/dev/null 2>&1; then
+      echo "  sudo dnf install -y tesseract tesseract-langpack-por tesseract-langpack-eng poppler-utils"
+    elif command -v pacman >/dev/null 2>&1; then
+      echo "  sudo pacman -S tesseract tesseract-data-por tesseract-data-eng poppler"
+    else
+      echo "  Consulte a documentação da sua distribuição para instalar 'tesseract-ocr'."
+    fi
   fi
 fi
 

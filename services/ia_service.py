@@ -23,7 +23,7 @@ def extrair_dados_com_llm(texto):
     {texto}
     """
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash", generation_config={"temperature": 0.0})
+        model = genai.GenerativeModel("gemini-2.5-flash-lite", generation_config={"temperature": 0.0})
         response = model.generate_content(prompt)
         if response and response.candidates:
             return response.candidates[0].content.parts[0].text
