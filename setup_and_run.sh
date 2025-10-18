@@ -120,6 +120,67 @@ ensure_env_var "DB_HOST" "localhost"
 ensure_env_var "DB_PORT" "5433"
 ensure_env_var "DB_NAME" "notas"
 
+detect_compose_cmd() {
+  if command -v docker >/dev/null 2>&1; then
+    if docker compose version >/dev/null 2>&1; then
+      COMPOSE_CMD=(docker compose)
+    elif command -v docker-compose >/dev/null 2>&1; then
+      COMPOSE_CMD=(docker-compose)
+    else
+      COMPOSE_CMD=()
+    fi
+  else
+    COMPOSE_CMD=()
+  fi
+}
+
+ensure_database_running() {
+  detect_compose_cmd
+  if [ ${#COMPOSE_CMD[@]} -eq 0 ]; then
+    echo "AVISO: Docker Compose não encontrado. Suba o PostgreSQL manualmente antes de executar a aplicação."
+    return
+  fi
+
+  if [ ! -f docker-compose.yml ]; then
+    echo "AVISO: docker-compose.yml não encontrado. Configure o banco manualmente se necessário."
+    return
+  fi
+
+  echo "==> Verificando serviço PostgreSQL via Docker Compose..."
+  local running
+  if [ "${COMPOSE_CMD[0]}" = "docker" ]; then
+    running="$(${COMPOSE_CMD[@]} ps --status running --services 2>/dev/null || true)"
+  else
+    running="$(${COMPOSE_CMD[@]} ps --services --filter "status=running" 2>/dev/null || true)"
+  fi
+
+  if ! grep -q '^db$' <<<"$running"; then
+    if [ -t 0 ]; then
+      read -r -p "Serviço 'db' não está em execução. Deseja iniciar com Docker Compose? [S/n]: " answer
+    else
+      answer="s"
+    fi
+    if [[ "${answer,,}" != "n" ]]; then
+      if ! ${COMPOSE_CMD[@]} up -d db; then
+        echo "Erro ao iniciar o banco via Docker Compose. Verifique permissões (grupo docker) e tente novamente."
+        return
+      fi
+    else
+      echo "Prosseguindo sem subir o PostgreSQL automaticamente."
+      return
+    fi
+  else
+    echo "Banco já está em execução."
+  fi
+
+  echo "==> Aplicando migrações/tabelas (database.init_db)..."
+  if ! python -m database.init_db; then
+    echo "AVISO: não foi possível criar as tabelas automaticamente."
+  fi
+}
+
+ensure_database_running
+
 echo "==> Garantindo diretório de uploads/"
 mkdir -p uploads
 

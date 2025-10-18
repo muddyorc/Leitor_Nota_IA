@@ -82,6 +82,8 @@ call :ensure_env_var DB_HOST localhost
 call :ensure_env_var DB_PORT 5433
 call :ensure_env_var DB_NAME notas
 
+call :ensure_database_running
+
 echo ==^> Garantindo diretorio uploads\
 if not exist uploads (
   mkdir uploads
@@ -96,6 +98,64 @@ findstr /b /c:"%1=" .env >nul 2>&1
 if errorlevel 1 (
   >> .env echo %1=%2
   echo .env atualizado com %1=%2.
+)
+goto :eof
+
+:detect_compose_cmd
+set "COMPOSE_CMD="
+docker --version >nul 2>&1 || goto :eof
+docker compose version >nul 2>&1
+if not errorlevel 1 (
+  set "COMPOSE_CMD=docker compose"
+  goto :eof
+)
+docker-compose --version >nul 2>&1
+if not errorlevel 1 (
+  set "COMPOSE_CMD=docker-compose"
+)
+goto :eof
+
+:ensure_database_running
+call :detect_compose_cmd
+if "%COMPOSE_CMD%"=="" (
+  echo AVISO: Docker Compose nao encontrado. Inicie o PostgreSQL manualmente se necessario.
+  goto :eof
+)
+if not exist docker-compose.yml (
+  echo AVISO: docker-compose.yml nao encontrado. Configure o banco separadamente.
+  goto :eof
+)
+echo ==^> Verificando servico PostgreSQL via Docker Compose...
+set "running="
+echo %COMPOSE_CMD% | find "docker compose" >nul
+if not errorlevel 1 (
+  for /f %%i in ('%COMPOSE_CMD% ps --status running --services 2^>nul') do set "running=%%i"
+) else (
+  for /f %%i in ('%COMPOSE_CMD% ps --services --filter status^=running 2^>nul') do set "running=%%i"
+)
+if /i not "%running%"=="db" (
+  set "answer=s"
+  if exist con (
+    set /p answer=Servico 'db' nao esta em execucao. Deseja iniciar com Docker Compose? [S/n]: 
+    if "%answer%"=="" set "answer=s"
+  )
+  if /i not "%answer%"=="n" (
+    %COMPOSE_CMD% up -d db
+    if errorlevel 1 (
+      echo Erro ao iniciar o banco via Docker Compose. Verifique se o Docker Desktop esta em execucao.
+      goto :eof
+    )
+  ) else (
+    echo Prosseguindo sem subir o PostgreSQL automaticamente.
+    goto :eof
+  )
+) else (
+  echo Banco ja esta em execucao.
+)
+echo ==^> Aplicando migracoes/tabelas (database.init_db)...
+python -m database.init_db
+if errorlevel 1 (
+  echo AVISO: nao foi possivel criar as tabelas automaticamente.
 )
 goto :eof
 
