@@ -2,9 +2,9 @@ import os
 import json
 from flask import Flask, render_template, request
 from config.settings import UPLOAD_FOLDER
-from services.AgenteExtracao.parser_service import extrair_texto_pdf
-from services.AgenteExtracao.ia_service import extrair_dados_com_llm
-from services.AgenteExtracao.utils import gerar_parcela_padrao, classificar_nota_fiscal
+from agents.AgenteExtracao.parser_service import extrair_texto_pdf
+from agents.AgenteExtracao.ia_service import extrair_dados_com_llm
+from agents.AgenteExtracao.utils import gerar_parcela_padrao
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -37,9 +37,8 @@ def upload_file():
         return {"error": "JSON inválido retornado pelo modelo", "resposta": clean_str}, 500
 
     dados_json = gerar_parcela_padrao(dados_json)
-    dados_json["classificacaoDespesa"] = classificar_nota_fiscal(dados_json)
 
-    return dados_json  
+    return dados_json
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
