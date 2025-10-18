@@ -14,7 +14,7 @@ O projeto é ideal para estudos, automação de processos financeiros e como bas
 
 ## 🚀 Começando
 
-Este é um projeto **Flask** em Python.
+Este é um projeto **Flask** em Python, com persistência em **PostgreSQL** executado via Docker.
 
 ### 🔹 1. Clonar o Repositório
 
@@ -42,22 +42,39 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 🔹 4. Configurar Variáveis de Ambiente
+### 🔹 4. Subir o PostgreSQL com Docker
 
-* Crie um arquivo `.env` na raiz do projeto.
-* Adicione sua chave da API do Gemini:
+É necessário ter **Docker** (e o plugin Compose ou `docker-compose`) instalado. Para iniciar o banco localmente utilizando o `docker-compose.yml` incluído no projeto:
+
+```bash
+docker compose up -d db
+# ou
+docker-compose up -d db
+```
+
+O serviço fica disponível em `localhost:5433`. O script de setup (`setup_and_run.sh` ou `.bat`) detecta automaticamente o Compose e oferece subir o banco caso não esteja rodando, mas é recomendável garantir que o Docker esteja ativo antes de executá-lo.
+
+### 🔹 5. Configurar Variáveis de Ambiente
+
+* Crie um arquivo `.env` na raiz do projeto (os scripts de setup já o criam automaticamente).
+* Adicione sua chave da API do Gemini e, se desejar, personalize as credenciais do banco. Valores padrão:
 
 ```env
 GOOGLE_API_KEY=your_google_api_key_here
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_HOST=localhost
+DB_PORT=5433
+DB_NAME=notas
 ```
 
-### 🔹 5. Criar Diretório de Uploads
+### 🔹 6. Criar Diretório de Uploads
 
 ```bash
 mkdir uploads
 ```
 
-### 🔹 6. Rodar o Servidor de Desenvolvimento
+### 🔹 7. Rodar o Servidor de Desenvolvimento
 
 ```bash
 python app.py
@@ -80,7 +97,7 @@ Abra [http://localhost:5000](http://localhost:5000) no navegador para usar a apl
 
 ## ⚙️ Scripts de Setup e Execução
 
-Para facilitar o uso, o projeto inclui scripts de setup/execução:
+Para facilitar o uso, o projeto inclui scripts de setup/execução. Eles criam a venv, instalam dependências, configuram o `.env` e tentam subir o PostgreSQL automaticamente (caso Docker/Compose esteja disponível):
 
 - Linux/MacOS: `setup_and_run.sh`
 - Windows: `setup_and_run.bat`
@@ -89,7 +106,8 @@ O que os scripts fazem:
 - Checam Python 3 e criam venv `.venv`
 - Instalam dependências (`requirements.txt`)
 - Verificam o Tesseract (OCR opcional) e informam como instalar
-- Preparam o arquivo `.env` pedindo a `GOOGLE_API_KEY` (ou usam a variável já exportada)
+- Preparam o arquivo `.env` pedindo a `GOOGLE_API_KEY` e preenchendo as variáveis do banco (`DB_*`)
+- Se Docker Compose estiver disponível, sobem o serviço `db` do `docker-compose.yml` e executam `python -m database.init_db` para garantir as tabelas
 - Garantem a pasta `uploads/`
 - Iniciam a aplicação com `python app.py`
 
