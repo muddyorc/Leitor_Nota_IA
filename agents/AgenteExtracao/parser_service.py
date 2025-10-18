@@ -1,8 +1,10 @@
 import fitz
 import shutil
+
 try:
     import pytesseract
     from PIL import Image
+
     _tesseract_bin = shutil.which("tesseract")
     OCR_DISPONIVEL = _tesseract_bin is not None
     if not OCR_DISPONIVEL:
@@ -10,6 +12,7 @@ try:
         print("Aviso: 'tesseract' não encontrado no PATH. OCR será desabilitado.")
 except ImportError:
     OCR_DISPONIVEL = False
+
 
 def extrair_texto_pdf(file_stream):
     try:

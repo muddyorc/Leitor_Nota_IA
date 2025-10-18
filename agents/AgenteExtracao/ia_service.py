@@ -3,6 +3,7 @@ from config.settings import GOOGLE_API_KEY
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
+
 def extrair_dados_com_llm(texto):
     prompt = f"""
     Analise o texto da nota fiscal e retorne um JSON válido com:

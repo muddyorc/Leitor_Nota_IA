@@ -2,9 +2,9 @@ import os
 import json
 from flask import Flask, render_template, request
 from config.settings import UPLOAD_FOLDER
-from services.parser_service import extrair_texto_pdf
-from services.ia_service import extrair_dados_com_llm
-from services.utils import gerar_parcela_padrao, classificar_nota_fiscal
+from services.AgenteExtracao.parser_service import extrair_texto_pdf
+from services.AgenteExtracao.ia_service import extrair_dados_com_llm
+from services.AgenteExtracao.utils import gerar_parcela_padrao, classificar_nota_fiscal
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
