@@ -76,6 +76,12 @@ if errorlevel 1 (
   )
 )
 
+call :ensure_env_var DB_USER postgres
+call :ensure_env_var DB_PASSWORD postgres
+call :ensure_env_var DB_HOST localhost
+call :ensure_env_var DB_PORT 5433
+call :ensure_env_var DB_NAME notas
+
 echo ==^> Garantindo diretorio uploads\
 if not exist uploads (
   mkdir uploads
@@ -83,6 +89,14 @@ if not exist uploads (
 
 echo ==^> Iniciando a aplicacao Flask...
 python app.py
+goto :eof
+
+:ensure_env_var
+findstr /b /c:"%1=" .env >nul 2>&1
+if errorlevel 1 (
+  >> .env echo %1=%2
+  echo .env atualizado com %1=%2.
+)
 goto :eof
 
 :pip_fail

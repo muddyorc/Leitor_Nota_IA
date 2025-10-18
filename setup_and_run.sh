@@ -104,6 +104,22 @@ if ! grep -q '^GOOGLE_API_KEY=' .env >/dev/null 2>&1; then
   fi
 fi
 
+# Garantir variáveis padrão do banco de dados caso não existam
+ensure_env_var() {
+  local key="$1"
+  local default_value="$2"
+  if ! grep -q "^${key}=" .env >/dev/null 2>&1; then
+    printf '%s=%s\n' "$key" "$default_value" >> .env
+    echo ".env atualizado com ${key}=${default_value}."
+  fi
+}
+
+ensure_env_var "DB_USER" "postgres"
+ensure_env_var "DB_PASSWORD" "postgres"
+ensure_env_var "DB_HOST" "localhost"
+ensure_env_var "DB_PORT" "5433"
+ensure_env_var "DB_NAME" "notas"
+
 echo "==> Garantindo diretório de uploads/"
 mkdir -p uploads
 
