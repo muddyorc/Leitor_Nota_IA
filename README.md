@@ -109,7 +109,7 @@ Com o projeto containerizado, basta utilizar o Docker Compose para subir a aplic
 docker compose up --build
 ```
 
-No primeiro build a imagem da aplicação Flask será criada a partir do `Dockerfile` e o serviço PostgreSQL será iniciado automaticamente. As credenciais usadas vêm do `.env`, mas para o container o host e a porta são substituídos para apontar para o serviço `db` interno (`DB_HOST=db`, `DB_PORT=5432`).
+No primeiro build a imagem da aplicação Flask será criada a partir do `Dockerfile` e o serviço PostgreSQL será iniciado automaticamente. O script de entrada `docker-entrypoint.sh` espera o banco ficar pronto, executa `python -m database.init_db` para garantir as tabelas e depois inicia o Flask. As credenciais usadas vêm do `.env`, mas para o container o host e a porta são substituídos para apontar para o serviço `db` interno (`DB_HOST=db`, `DB_PORT=5432`).
 
 - A aplicação web fica disponível em [http://localhost:5000](http://localhost:5000)
 - Os dados do banco são persistidos no volume `postgres_data`
