@@ -101,7 +101,35 @@ Abra [http://localhost:5000](http://localhost:5000) no navegador para usar a apl
 
 ---
 
-## 🛠 Tecnologias Utilizadas
+## � Executando com Docker
+
+Com o projeto containerizado, basta utilizar o Docker Compose para subir a aplicação e o banco:
+
+```bash
+docker compose up --build
+```
+
+No primeiro build a imagem da aplicação Flask será criada a partir do `Dockerfile` e o serviço PostgreSQL será iniciado automaticamente. As credenciais usadas vêm do `.env`, mas para o container o host e a porta são substituídos para apontar para o serviço `db` interno (`DB_HOST=db`, `DB_PORT=5432`).
+
+- A aplicação web fica disponível em [http://localhost:5000](http://localhost:5000)
+- Os dados do banco são persistidos no volume `postgres_data`
+- Os arquivos enviados para `uploads/` ficam no volume `uploads_data`
+
+Para desligar os serviços:
+
+```bash
+docker compose down
+```
+
+Se preferir remover os volumes (incluindo os dados do banco), acrescente `-v`:
+
+```bash
+docker compose down -v
+```
+
+---
+
+## �🛠 Tecnologias Utilizadas
 
 * **Python 3.10+**: linguagem principal
 * **Flask**: microframework web para Python

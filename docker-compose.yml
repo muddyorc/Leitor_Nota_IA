@@ -1,4 +1,21 @@
 services:
+  app:
+    build: .
+    container_name: leitor_nota_app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      FLASK_DEBUG: 0
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+
   db:
     image: postgres:16
     container_name: leitor_nota_db
@@ -19,3 +36,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

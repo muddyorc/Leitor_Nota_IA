@@ -80,4 +80,6 @@ app.add_url_rule('/upload', view_func=extrair, methods=['POST'])
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(debug=True)
+    debug = os.getenv("FLASK_DEBUG", "1") == "1"
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=debug)
