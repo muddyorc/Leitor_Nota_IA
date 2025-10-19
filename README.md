@@ -8,6 +8,11 @@ O **NotaFiscalAI** é uma aplicação web desenvolvida com **Flask** que permite
 
 O sistema utiliza inteligência artificial (**Google Gemini**) para processar o texto do PDF e retornar os dados em formato **JSON** e também em uma **visualização formatada**, facilitando o controle financeiro e a análise de despesas.
 
+Desde a segunda etapa do projeto, o fluxo passou a ser dividido em duas fases:
+
+- **Extração e verificação** (`/extrair`): o PDF é processado e o sistema consulta o banco para informar se fornecedor, faturado e classificações já existem, exibindo o status detalhado na interface.
+- **Lançamento manual** (`/lancar_conta`): depois de revisar os dados, o usuário confirma o lançamento; o backend cria os registros que faltam e persiste o movimento e as parcelas.
+
 O projeto é ideal para estudos, automação de processos financeiros e como base para sistemas que precisam interpretar documentos fiscais.
 
 ---
@@ -76,7 +81,7 @@ Crie as tabelas definidas no ORM chamando o script de inicialização:
 python -m database.init_db
 ```
 
-> Dica: os scripts de setup (`setup_and_run.sh` / `.bat`) já executam esse comando automaticamente.
+> Dica: os scripts de setup (`setup_and_run.sh` / `.bat`) já executam esse comando automaticamente, aguardando o banco ficar pronto através do utilitário `database.wait_for_db`.
 
 ### 🔹 7. Criar Diretório de Uploads (se ainda não existir)
 
@@ -123,7 +128,7 @@ O que os scripts fazem:
 - Instalam dependências (`requirements.txt`)
 - Verificam o Tesseract (OCR opcional) e informam como instalar
 - Preparam o arquivo `.env` pedindo a `GOOGLE_API_KEY` e preenchendo as variáveis do banco (`DB_*`)
-- Se Docker Compose estiver disponível, sobem o serviço `db` do `docker-compose.yml` e executam `python -m database.init_db` para garantir as tabelas
+- Se Docker Compose estiver disponível, sobem o serviço `db` do `docker-compose.yml`, aguardam o PostgreSQL inicializar com `python -m database.wait_for_db` e executam `python -m database.init_db` para garantir as tabelas
 - Garantem a pasta `uploads/`
 - Iniciam a aplicação com `python app.py`
 
@@ -181,6 +186,53 @@ Se ainda aparecer a mensagem "tesseract is not installed or it's not in your PAT
 - Verifique se `tesseract` executa no terminal: `tesseract --version`.
 - Reabra o terminal e rode novamente o script para atualizar o PATH da sessão.
 - Em WSL/containers, confirme se o pacote foi instalado dentro do mesmo ambiente do Python.
+
+---
+
+## 🧪 Testes Automatizados
+
+O projeto conta com uma suíte de testes (PyTest) cobrindo o agente de persistência, os endpoints `/extrair` e `/lancar_conta`, e o script de inicialização do banco. Para executá-la:
+
+```bash
+.venv/bin/python -m pytest
+```
+
+No Windows:
+
+```bat
+.venv\Scripts\python -m pytest
+```
+
+Os scripts de setup já criam e ativam a venv, então basta reutilizá-la.
+
+---
+
+## 📊 Inspecionando o Banco de Dados
+
+Para navegar pelos dados de forma visual você pode usar ferramentas gráficas de PostgreSQL:
+
+- **DBeaver Community** (Windows/Linux/macOS): após instalar, crie uma conexão com `localhost`, porta `5433`, banco `notas`, usuário e senha `postgres`.
+- **pgAdmin 4 via Docker**: execute
+	```bash
+	docker run -d --name pgadmin -p 5050:80 \
+		-e PGADMIN_DEFAULT_EMAIL=admin@example.com \
+		-e PGADMIN_DEFAULT_PASSWORD=admin \
+		--network extrair_dados_nota_default \
+		dpage/pgadmin4
+	```
+	Em seguida acesse http://localhost:5050 e cadastre um servidor apontando para o host `leitor_nota_db` (ou `localhost:5433` se exposto localmente) com usuário/senha `postgres`.
+
+---
+
+## 🔄 Fluxo na Interface Web
+
+1. Selecione um PDF de nota fiscal e clique em **EXTRAIR DADOS**.
+2. Revise a visualização formatada e a aba JSON.
+3. No cartão **Verificação no Sistema**, confira os status:
+	 - Fornecedor e faturado exibem nome, documento e se já existem (com ID quando aplicável).
+	 - Cada despesa classificada informa se já está cadastrada.
+4. Caso esteja tudo correto, clique em **LANÇAR NO SISTEMA** para persistir os dados.
+5. Uma mensagem confirma o sucesso ou aponta o erro encontrado.
 
 ---
 
