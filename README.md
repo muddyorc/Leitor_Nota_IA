@@ -68,13 +68,25 @@ DB_PORT=5433
 DB_NAME=notas
 ```
 
-### 🔹 6. Criar Diretório de Uploads
+### 🔹 6. Inicializar o Banco de Dados
+
+Crie as tabelas definidas no ORM chamando o script de inicialização:
 
 ```bash
-mkdir uploads
+python -m database.init_db
 ```
 
-### 🔹 7. Rodar o Servidor de Desenvolvimento
+> Dica: os scripts de setup (`setup_and_run.sh` / `.bat`) já executam esse comando automaticamente.
+
+### 🔹 7. Criar Diretório de Uploads (se ainda não existir)
+
+```bash
+mkdir -p uploads
+```
+
+> Os scripts de setup criam automaticamente essa pasta ao final da execução.
+
+### 🔹 8. Rodar o Servidor de Desenvolvimento
 
 ```bash
 python app.py
@@ -89,6 +101,10 @@ Abra [http://localhost:5000](http://localhost:5000) no navegador para usar a apl
 * **Python 3.10+**: linguagem principal
 * **Flask**: microframework web para Python
 * **Google Gemini**: inteligência artificial para extração de dados
+* **SQLAlchemy**: ORM para modelagem e persistência dos dados
+* **PostgreSQL 16**: banco de dados relacional (via Docker)
+* **Docker Compose**: orquestração do serviço de banco de dados
+* **python-dotenv**: carregamento de variáveis de ambiente
 * **PyMuPDF (fitz)**: leitura e extração de texto de PDFs
 * **Pillow + pytesseract**: OCR opcional para PDFs sem texto
 * **HTML5, CSS3 e JavaScript**: interface web responsiva
@@ -140,7 +156,7 @@ setup_and_run.bat
 
 ---
 
-## � Pré-requisitos de OCR (Tesseract)
+## 🔍 Pré-requisitos de OCR (Tesseract)
 
 Se o PDF não tiver texto embutido (apenas imagem), a aplicação usa OCR via `pytesseract` + binário `tesseract`.
 
@@ -168,9 +184,9 @@ Se ainda aparecer a mensagem "tesseract is not installed or it's not in your PAT
 
 ---
 
-## �📄 Considerações Finais
+## 📄 Considerações Finais
 
-O NotaFiscalAI é modular, com código organizado em pastas (`services`, `config`, `uploads`, `templates`, `static`), seguindo boas práticas de desenvolvimento e fácil manutenção.
+O NotaFiscalAI é modular, com código organizado em pastas (`agents`, `database`, `config`, `uploads`, `templates`, `static`), seguindo boas práticas de desenvolvimento e fácil manutenção.
 
 O projeto serve tanto como ferramenta prática quanto como exemplo de integração entre Flask, IA e manipulação de PDFs.
 
@@ -178,5 +194,7 @@ O projeto serve tanto como ferramenta prática quanto como exemplo de integraç�
 
 ## 👥 Autor
 
-📌 **Autor:** [Julio Cezar](https://github.com/muddyorc)
+📌 **Autores:** 
+* [Julio Cezar](https://github.com/muddyorc)
+* [Rian Guedes](https://github.com/riangrodrigues)
 
