@@ -1,4 +1,4 @@
-"""Testes para o endpoint /upload garantindo persistência e resposta."""
+"""Testes para os fluxos de extração e lançamento da aplicação Flask."""
 
 from __future__ import annotations
 
@@ -54,55 +54,40 @@ def app_client(monkeypatch):
     engine.dispose()
 
 
-def test_upload_endpoint_persistencia_sucesso(app_client):
+def test_extrair_endpoint_retorna_status_e_nao_persiste(app_client):
     client, session_factory, payload = app_client
 
     response = client.post(
-        "/upload",
+        "/extrair",
         data={"file": (io.BytesIO(b"fake pdf"), "nota.pdf")},
         content_type="multipart/form-data",
     )
 
     assert response.status_code == 200
-
     body = response.get_json()
-    assert body is not None
     assert body["numeroNotaFiscal"] == payload["numeroNotaFiscal"]
-    assert "_persistencia" in body
-
-    resumo = body["_persistencia"]
-    assert resumo["movimento_id"] is not None
-    assert len(resumo["parcelas_ids"]) == 1
+    verificacao = body.get("_verificacao")
+    assert verificacao["fornecedor"]["status"] == "NÃO EXISTE"
+    assert verificacao["faturado"]["status"] == "NÃO EXISTE"
 
     with session_factory() as session:
-        movimentos = session.execute(select(MovimentoContas)).scalars().all()
-        assert len(movimentos) == 1
-        assert movimentos[0].numero_nota_fiscal == payload["numeroNotaFiscal"]
-
-        pessoas = session.execute(select(Pessoas)).scalars().all()
-        assert len(pessoas) == 2
-
-        parcelas = session.execute(select(ParcelasContas)).scalars().all()
-        assert len(parcelas) == 1
-
-    classificacoes = session.execute(select(Classificacao)).scalars().all()
-    assert len(classificacoes) == 1
+        assert session.execute(select(MovimentoContas)).scalars().all() == []
+        assert session.execute(select(Pessoas)).scalars().all() == []
 
 
-def test_upload_sem_arquivo_retorna_400(app_client):
+def test_extrair_sem_arquivo_retorna_400(app_client):
     client, *_ = app_client
 
-    response = client.post("/upload", data={}, content_type="multipart/form-data")
-
+    response = client.post("/extrair", data={}, content_type="multipart/form-data")
     assert response.status_code == 400
     assert response.get_json()["error"] == "Nenhum arquivo enviado"
 
 
-def test_upload_formato_invalido_retorna_400(app_client):
+def test_extrair_formato_invalido_retorna_400(app_client):
     client, *_ = app_client
 
     response = client.post(
-        "/upload",
+        "/extrair",
         data={"file": (io.BytesIO(b"fake"), "nota.txt")},
         content_type="multipart/form-data",
     )
@@ -111,12 +96,12 @@ def test_upload_formato_invalido_retorna_400(app_client):
     assert response.get_json()["error"] == "Arquivo inválido"
 
 
-def test_upload_falha_extracao_pdf_retorna_500(app_client, monkeypatch):
+def test_extrair_falha_extracao_pdf_retorna_500(app_client, monkeypatch):
     client, *_ = app_client
     monkeypatch.setattr("app.extrair_texto_pdf", lambda _stream: "")
 
     response = client.post(
-        "/upload",
+        "/extrair",
         data={"file": (io.BytesIO(b"fake pdf"), "nota.pdf")},
         content_type="multipart/form-data",
     )
@@ -125,12 +110,12 @@ def test_upload_falha_extracao_pdf_retorna_500(app_client, monkeypatch):
     assert response.get_json()["error"] == "Não foi possível extrair texto do PDF"
 
 
-def test_upload_falha_gemini_retorna_500(app_client, monkeypatch):
+def test_extrair_falha_gemini_retorna_500(app_client, monkeypatch):
     client, *_ = app_client
     monkeypatch.setattr("app.extrair_dados_com_llm", lambda _texto: None)
 
     response = client.post(
-        "/upload",
+        "/extrair",
         data={"file": (io.BytesIO(b"fake pdf"), "nota.pdf")},
         content_type="multipart/form-data",
     )
@@ -139,12 +124,12 @@ def test_upload_falha_gemini_retorna_500(app_client, monkeypatch):
     assert response.get_json()["error"] == "Falha na comunicação com Gemini"
 
 
-def test_upload_json_invalido_retorna_500(app_client, monkeypatch):
+def test_extrair_json_invalido_retorna_500(app_client, monkeypatch):
     client, *_ = app_client
     monkeypatch.setattr("app.extrair_dados_com_llm", lambda _texto: "{invalido")
 
     response = client.post(
-        "/upload",
+        "/extrair",
         data={"file": (io.BytesIO(b"fake pdf"), "nota.pdf")},
         content_type="multipart/form-data",
     )
@@ -155,24 +140,46 @@ def test_upload_json_invalido_retorna_500(app_client, monkeypatch):
     assert body["resposta"] == "{invalido"
 
 
-def test_upload_falha_persistencia_retorna_500(app_client, monkeypatch):
-    client, _, _ = app_client
+def test_lancar_conta_persistencia_sucesso(app_client):
+    client, session_factory, payload = app_client
+
+    response = client.post("/lancar_conta", json=payload)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["mensagem"] == "Conta lançada com sucesso"
+    assert body["resultado"]["movimento_id"] is not None
+
+    with session_factory() as session:
+        movimentos = session.execute(select(MovimentoContas)).scalars().all()
+        assert len(movimentos) == 1
+        assert movimentos[0].numero_nota_fiscal == payload["numeroNotaFiscal"]
+
+        pessoas = session.execute(select(Pessoas)).scalars().all()
+        assert len(pessoas) == 2
+
+        classificacoes = session.execute(select(Classificacao)).scalars().all()
+        assert len(classificacoes) == 1
+
+        parcelas = session.execute(select(ParcelasContas)).scalars().all()
+        assert len(parcelas) == 1
+
+
+def test_lancar_conta_falha_persistencia_retorna_500(app_client, monkeypatch):
+    client, *_ = app_client
 
     class FakeAgent:
         def lancar_conta_pagar(self, _dados):
             raise RuntimeError("falha test")
 
+        def verificar_entidades(self, dados):  # pragma: no cover - não deve ser usado aqui
+            return {}
+
     monkeypatch.setattr("app.persistencia_agent", FakeAgent())
 
-    response = client.post(
-        "/upload",
-        data={"file": (io.BytesIO(b"fake pdf"), "nota.pdf")},
-        content_type="multipart/form-data",
-    )
+    response = client.post("/lancar_conta", json={"numeroNotaFiscal": "NF"})
 
     assert response.status_code == 500
     body = response.get_json()
     assert body["error"] == "Falha ao persistir dados"
     assert "falha test" in body["detalhes"]
-
-    # O monkeypatch restaura o agente original automaticamente após o teste

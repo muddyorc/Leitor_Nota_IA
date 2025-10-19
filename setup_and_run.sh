@@ -134,6 +134,15 @@ detect_compose_cmd() {
   fi
 }
 
+wait_for_database() {
+  echo "==> Aguardando PostgreSQL inicializar..."
+  if python -m database.wait_for_db; then
+    return 0
+  fi
+  echo "AVISO: PostgreSQL não respondeu a tempo."
+  return 1
+}
+
 ensure_database_running() {
   detect_compose_cmd
   if [ ${#COMPOSE_CMD[@]} -eq 0 ]; then
@@ -173,9 +182,13 @@ ensure_database_running() {
     echo "Banco já está em execução."
   fi
 
-  echo "==> Aplicando migrações/tabelas (database.init_db)..."
-  if ! python -m database.init_db; then
-    echo "AVISO: não foi possível criar as tabelas automaticamente."
+  if wait_for_database; then
+    echo "==> Aplicando migrações/tabelas (database.init_db)..."
+    if ! python -m database.init_db; then
+      echo "AVISO: não foi possível criar as tabelas automaticamente."
+    fi
+  else
+    echo "AVISO: prosseguindo sem aplicar database.init_db porque o banco não respondeu a tempo."
   fi
 }
 

@@ -150,3 +150,71 @@ pre {
   padding-bottom: 5px;
 }
 
+.status-card {
+  margin-top: 20px;
+  background: #1f1f1f;
+}
+
+.status-card .status-secao {
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #2f2f2f;
+}
+
+.status-card .status-secao:last-child {
+  border-bottom: none;
+}
+
+.status-card .status-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9bbcff;
+}
+
+.status-card .status-valor {
+  margin: 4px 0;
+  color: #e6e6e6;
+}
+
+.status-card .status-resultado {
+  margin-top: 6px;
+  font-weight: 700;
+  color: #0d6efd;
+}
+
+.status-card .status-lista {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 8px;
+}
+
+.status-card .status-lista li {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #242424;
+  border: 1px solid #2c2c2c;
+}
+
+.acoes-lancamento {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.acoes-lancamento .mensagem {
+  min-height: 20px;
+  font-size: 0.95rem;
+}
+
+button.primary {
+  background: #198754;
+}
+
+button.primary:hover {
+  background: #157347;
+}
+

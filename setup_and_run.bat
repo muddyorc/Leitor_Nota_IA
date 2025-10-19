@@ -115,6 +115,15 @@ if not errorlevel 1 (
 )
 goto :eof
 
+:wait_for_database
+echo ==^> Aguardando PostgreSQL inicializar...
+python -m database.wait_for_db
+if errorlevel 1 (
+  echo AVISO: PostgreSQL nao respondeu a tempo.
+  exit /b 1
+)
+exit /b 0
+
 :ensure_database_running
 call :detect_compose_cmd
 if "%COMPOSE_CMD%"=="" (
@@ -151,6 +160,11 @@ if /i not "%running%"=="db" (
   )
 ) else (
   echo Banco ja esta em execucao.
+)
+call :wait_for_database
+if errorlevel 1 (
+  echo AVISO: prosseguindo sem aplicar database.init_db porque o banco nao respondeu a tempo.
+  goto :eof
 )
 echo ==^> Aplicando migracoes/tabelas (database.init_db)...
 python -m database.init_db

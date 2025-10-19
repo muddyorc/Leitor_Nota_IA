@@ -39,6 +39,7 @@ class PersistenciaAgent:
         *,
         tipo_padrao: Optional[str] = None,
         session: Optional[Session] = None,
+        criar_se_ausente: bool = True,
     ) -> Optional[int]:
         """Busca uma pessoa pelo documento ou cria um novo registro.
 
@@ -64,6 +65,8 @@ class PersistenciaAgent:
             pessoa = session.execute(stmt).scalar_one_or_none()
             if pessoa:
                 return pessoa.id
+            if not criar_se_ausente:
+                return None
 
             pessoa = Pessoas(
                 tipo=tipo_padrao or self._inferir_tipo_pessoa(dados_pessoa),
@@ -86,6 +89,7 @@ class PersistenciaAgent:
         dados_classificacao: Any,
         *,
         session: Optional[Session] = None,
+        criar_se_ausente: bool = True,
     ) -> Optional[int]:
         """Garante a existência da classificação e retorna seu ID."""
 
@@ -101,6 +105,8 @@ class PersistenciaAgent:
             classificacao = session.execute(stmt).scalar_one_or_none()
             if classificacao:
                 return classificacao.id
+            if not criar_se_ausente:
+                return None
 
             classificacao = Classificacao(
                 tipo=self._extrair_tipo_classificacao(dados_classificacao),
@@ -161,6 +167,45 @@ class PersistenciaAgent:
                 "fornecedor_id": fornecedor_id,
                 "faturado_id": faturado_id,
             }
+
+    def verificar_entidades(self, dados_json: Dict[str, Any]) -> Dict[str, Any]:
+        """Retorna o status de existência das entidades envolvidas sem realizar inserções."""
+
+        session = self._session_factory()
+        try:
+            fornecedor_info = self._verificar_pessoa(
+                session,
+                dados_json.get("fornecedor", {}),
+                tipo_padrao="FORNECEDOR",
+            )
+            faturado_info = self._verificar_pessoa(
+                session,
+                dados_json.get("faturado", {}),
+                tipo_padrao="FATURADO",
+            )
+
+            classificacoes_info = []
+            for item in dados_json.get("classificacaoDespesa") or []:
+                descricao = self._extrair_descricao_classificacao(item)
+                if not descricao:
+                    continue
+                stmt = select(Classificacao).where(func.lower(Classificacao.descricao) == descricao.lower())
+                classificacao = session.execute(stmt).scalar_one_or_none()
+                classificacoes_info.append(
+                    {
+                        "descricao": descricao,
+                        "status": "EXISTE" if classificacao else "NÃO EXISTE",
+                        "id": classificacao.id if classificacao else None,
+                    }
+                )
+
+            return {
+                "fornecedor": fornecedor_info,
+                "faturado": faturado_info,
+                "classificacoes": classificacoes_info,
+            }
+        finally:
+            session.close()
 
     def _upsert_movimento(
         self,
@@ -260,6 +305,47 @@ class PersistenciaAgent:
         if dados_pessoa.get("cpf"):
             return "FATURADO"
         return None
+
+    def _verificar_pessoa(
+        self,
+        session: Session,
+        dados_pessoa: Dict[str, Any],
+        *,
+        tipo_padrao: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if not dados_pessoa:
+            return {
+                "status": "NÃO INFORMADO",
+                "id": None,
+                "documento": None,
+                "tipo": tipo_padrao,
+            }
+
+        documento = self._sanitize_documento(
+            dados_pessoa.get("documento")
+            or dados_pessoa.get("cnpj")
+            or dados_pessoa.get("cpf")
+        )
+        if not documento:
+            return {
+                "status": "NÃO INFORMADO",
+                "id": None,
+                "documento": None,
+                "tipo": tipo_padrao,
+            }
+
+        stmt = select(Pessoas).where(Pessoas.documento == documento)
+        pessoa = session.execute(stmt).scalar_one_or_none()
+
+        return {
+            "status": "EXISTE" if pessoa else "NÃO EXISTE",
+            "id": pessoa.id if pessoa else None,
+            "documento": documento,
+            "tipo": tipo_padrao or self._inferir_tipo_pessoa(dados_pessoa),
+            "nome": dados_pessoa.get("razaoSocial")
+            or dados_pessoa.get("nomeCompleto")
+            or dados_pessoa.get("fantasia"),
+        }
 
     @staticmethod
     def _extrair_descricao_classificacao(dados_classificacao: Any) -> Optional[str]:

@@ -109,3 +109,33 @@ def test_lancar_conta_pagar_cria_movimento_parcelas_e_classificacao(
         classificacoes = _fetch_all(session, Classificacao)
         assert len(classificacoes) == 1
         assert classificacoes[0].descricao == "Insumos"
+
+
+def test_verificar_entidades_retorna_status_sem_criar(
+    agent: PersistenciaAgent,
+    session_factory: sessionmaker,
+) -> None:
+    payload = {
+        "fornecedor": {"razaoSocial": "Fazenda Modelo", "cnpj": "12.345.678/0001-00"},
+        "faturado": {"nomeCompleto": "João da Silva", "cpf": "123.456.789-00"},
+        "classificacaoDespesa": ["Insumos"],
+    }
+
+    status_inicial = agent.verificar_entidades(payload)
+    assert status_inicial["fornecedor"]["status"] == "NÃO EXISTE"
+    assert status_inicial["faturado"]["status"] == "NÃO EXISTE"
+    assert status_inicial["classificacoes"][0]["status"] == "NÃO EXISTE"
+
+    agent.lancar_conta_pagar(
+        {
+            **payload,
+            "numeroNotaFiscal": "NF-001",
+            "dataEmissao": "2024-02-10",
+            "valorTotal": 100,
+        }
+    )
+
+    status_posterior = agent.verificar_entidades(payload)
+    assert status_posterior["fornecedor"]["status"] == "EXISTE"
+    assert status_posterior["faturado"]["status"] == "EXISTE"
+    assert status_posterior["classificacoes"][0]["status"] == "EXISTE"
