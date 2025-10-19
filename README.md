@@ -111,6 +111,7 @@ docker compose up --build
 
 No primeiro build a imagem da aplicação Flask será criada a partir do `Dockerfile` e o serviço PostgreSQL será iniciado automaticamente. O script de entrada `docker-entrypoint.sh` espera o banco ficar pronto, executa `python -m database.init_db` para garantir as tabelas e depois inicia o Flask. As credenciais usadas vêm do `.env`, mas para o container o host e a porta são substituídos para apontar para o serviço `db` interno (`DB_HOST=db`, `DB_PORT=5432`).
 
+- Antes de subir os containers, copie `.env.example` para `.env` e insira sua `GOOGLE_API_KEY`.
 - A aplicação web fica disponível em [http://localhost:5000](http://localhost:5000)
 - Os dados do banco são persistidos no volume `postgres_data`
 - Os arquivos enviados para `uploads/` ficam no volume `uploads_data`
