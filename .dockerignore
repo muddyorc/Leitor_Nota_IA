@@ -1,0 +1,12 @@
+.git
+.gitignore
+__pycache__
+*.py[cod]
+*.swp
+.venv
+venv
+.env
+uploads
+pytest_cache
+.pytest_cache
+*.log

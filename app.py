@@ -1,20 +1,22 @@
 import os
 import json
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 from config.settings import UPLOAD_FOLDER
-from services.parser_service import extrair_texto_pdf
-from services.ia_service import extrair_dados_com_llm
-from services.utils import gerar_parcela_padrao, classificar_nota_fiscal
+from agents.AgenteExtracao.parser_service import extrair_texto_pdf
+from agents.AgenteExtracao.ia_service import extrair_dados_com_llm
+from agents.AgenteExtracao.utils import gerar_parcela_padrao
+from agents.AgentePersistencia.processador import PersistenciaAgent
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+persistencia_agent = PersistenciaAgent()
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
+@app.route('/extrair', methods=['POST'])
+def extrair():
     if 'file' not in request.files:
         return {"error": "Nenhum arquivo enviado"}, 400
 
@@ -37,10 +39,47 @@ def upload_file():
         return {"error": "JSON inválido retornado pelo modelo", "resposta": clean_str}, 500
 
     dados_json = gerar_parcela_padrao(dados_json)
-    dados_json["classificacaoDespesa"] = classificar_nota_fiscal(dados_json)
 
-    return dados_json  
+    verificacao = persistencia_agent.verificar_entidades(dados_json)
+    dados_json["_verificacao"] = verificacao
+
+    return dados_json
+
+
+@app.route('/lancar_conta', methods=['POST'])
+def lancar_conta():
+    try:
+        dados_json = request.get_json(force=True)
+    except Exception:
+        return {"error": "JSON inválido"}, 400
+
+    if not isinstance(dados_json, dict):
+        return {"error": "Payload deve ser um objeto JSON"}, 400
+
+    dados_para_persistir = {
+        chave: valor for chave, valor in dados_json.items() if not chave.startswith("_")
+    }
+
+    if not dados_para_persistir:
+        return {"error": "Dados ausentes para lançamento"}, 400
+
+    try:
+        resultado_persistencia = persistencia_agent.lancar_conta_pagar(dados_para_persistir)
+    except Exception as exc:
+        print(f"Erro ao persistir dados: {exc}")
+        return {"error": "Falha ao persistir dados", "detalhes": str(exc)}, 500
+
+    return jsonify({
+        "mensagem": "Conta lançada com sucesso",
+        "resultado": resultado_persistencia,
+    })
+
+
+# Manter compatibilidade com rota antiga, se necessário
+app.add_url_rule('/upload', view_func=extrair, methods=['POST'])
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(debug=True)
+    debug = os.getenv("FLASK_DEBUG", "1") == "1"
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=debug)
