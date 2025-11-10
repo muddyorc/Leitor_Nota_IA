@@ -7,9 +7,15 @@ from agents.AgenteExtracao.ia_service import extrair_dados_com_llm
 from agents.AgenteExtracao.utils import gerar_parcela_padrao
 from agents.AgentePersistencia.processador import PersistenciaAgent
 
+
+# ✅ novo import — agente de consulta RAG
+from agents.consulta_rag.processador import ConsultaRagAgent
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 persistencia_agent = PersistenciaAgent()
+consulta_agent = ConsultaRagAgent()  # ✅ nova instância do agente de consulta
 
 @app.route('/')
 def index():
@@ -73,6 +79,37 @@ def lancar_conta():
         "mensagem": "Conta lançada com sucesso",
         "resultado": resultado_persistencia,
     })
+
+@app.route('/consulta', methods=['GET'])
+def consulta_page():
+    """Renderiza a página da interface de consulta RAG."""
+    return render_template('consulta.html')
+
+
+@app.route('/consultar_rag', methods=['POST'])
+def consultar_rag():
+    """Processa uma pergunta e retorna a resposta do modelo via RAG."""
+    try:
+        payload = request.get_json(force=True)
+    except Exception:
+        return {"error": "JSON inválido"}, 400
+
+    pergunta = payload.get('pergunta')
+    modo = payload.get('modo') or 'simples'
+
+    if not pergunta or not isinstance(pergunta, str):
+        return {"error": "Pergunta inválida"}, 400
+
+    try:
+        if modo == 'semantico':
+            resposta = consulta_agent.executar_consulta_semantica(pergunta)
+        else:
+            resposta = consulta_agent.executar_consulta_simples(pergunta)
+    except Exception as exc:
+        print(f"Erro ao processar RAG: {exc}")
+        return {"error": "Falha na consulta RAG", "detalhes": str(exc)}, 500
+
+    return jsonify({"resposta": resposta})
 
 
 # Manter compatibilidade com rota antiga, se necessário
