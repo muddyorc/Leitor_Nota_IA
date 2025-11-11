@@ -4,22 +4,23 @@
 
 ## 📌 Sobre o Projeto
 
-O **NotaFiscalAI** é uma aplicação web desenvolvida com **Flask** que permite a extração automática de informações de arquivos PDF de notas fiscais.
+O **NotaFiscalAI** é uma aplicação web desenvolvida com **Flask** que automatiza a extração de informações de PDFs de notas fiscais.
 
-O sistema utiliza inteligência artificial (**Google Gemini**) para processar o texto do PDF e retornar os dados em formato **JSON** e também em uma **visualização formatada**, facilitando o controle financeiro e a análise de despesas.
+O sistema utiliza inteligência artificial (**Google Gemini**) para interpretar o conteúdo dos arquivos e devolver os dados tanto em formato **JSON** quanto em uma **visualização amigável**, simplificando a conferência e o lançamento financeiro. A partir da Etapa 3, a aplicação passou a oferecer também uma interface de **consulta RAG** (Retrieval-Augmented Generation), permitindo perguntas em linguagem natural sobre as contas já persistidas.
 
-Desde a segunda etapa do projeto, o fluxo passou a ser dividido em duas fases:
+O fluxo completo é dividido em três etapas principais:
 
-- **Extração e verificação** (`/extrair`): o PDF é processado e o sistema consulta o banco para informar se fornecedor, faturado e classificações já existem, exibindo o status detalhado na interface.
-- **Lançamento manual** (`/lancar_conta`): depois de revisar os dados, o usuário confirma o lançamento; o backend cria os registros que faltam e persiste o movimento e as parcelas.
+- **Extração e verificação** (`/extrair`): processa o PDF e consulta o banco para informar se fornecedor, faturado e classificações já existem.
+- **Lançamento manual** (`/lancar_conta`): após revisão, cria os registros faltantes e grava o movimento e as parcelas.
+- **Consulta RAG** (`/consulta`): página dedicada para perguntas em linguagem natural, com modos **Simples (SQL)** e **Semântico (ChromaDB + Sentence-Transformers)**.
 
-O projeto é ideal para estudos, automação de processos financeiros e como base para sistemas que precisam interpretar documentos fiscais.
+O projeto serve como base para automação de contas a pagar, estudos de integração entre IA e documentos fiscais e demonstração de consultas RAG sobre dados estruturados.
 
 ---
 
 ## 🚀 Começando
 
-Este é um projeto **Flask** em Python, com persistência em **PostgreSQL** executado via Docker.
+Este é um projeto **Flask** com persistência em **PostgreSQL** (via Docker) e suporte opcional a OCR (Tesseract).
 
 ### 🔹 1. Clonar o Repositório
 
@@ -28,16 +29,14 @@ git clone https://github.com/muddyorc/Leitor_Nota_IA.git
 cd Leitor_Nota_IA/extrair_dados_nota
 ```
 
-### 🔹 2. Criar Ambiente Virtual (opcional; use os scripts prontos)
-
-Você pode usar os scripts prontos abaixo para setup automático. Se preferir fazer manualmente, siga este passo.
+### 🔹 2. Criar Ambiente Virtual (opcional: os scripts prontos já fazem isso)
 
 ```bash
 python -m venv .venv
 # Ativar ambiente virtual
 # Windows
 .venv\Scripts\activate
-# Linux / MacOS
+# Linux / macOS
 source .venv/bin/activate
 ```
 
@@ -49,20 +48,17 @@ pip install -r requirements.txt
 
 ### 🔹 4. Subir o PostgreSQL com Docker
 
-É necessário ter **Docker** (e o plugin Compose ou `docker-compose`) instalado. Para iniciar o banco localmente utilizando o `docker-compose.yml` incluído no projeto:
-
 ```bash
 docker compose up -d db
-# ou
+# ou, se estiver usando docker-compose clássico
 docker-compose up -d db
 ```
 
-O serviço fica disponível em `localhost:5433`. O script de setup (`setup_and_run.sh` ou `.bat`) detecta automaticamente o Compose e oferece subir o banco caso não esteja rodando, mas é recomendável garantir que o Docker esteja ativo antes de executá-lo.
+O serviço ficará disponível em `localhost:5433`. Os scripts `setup_and_run.sh` / `.bat` detectam o Docker e perguntam se você deseja subir o banco automaticamente.
 
 ### 🔹 5. Configurar Variáveis de Ambiente
 
-* Crie um arquivo `.env` na raiz do projeto (os scripts de setup já o criam automaticamente).
-* Adicione sua chave da API do Gemini e, se desejar, personalize as credenciais do banco. Valores padrão:
+Crie um arquivo `.env` na raiz (os scripts de setup criam automaticamente) e informe sua chave do Gemini:
 
 ```env
 GOOGLE_API_KEY=your_google_api_key_here
@@ -71,58 +67,66 @@ DB_PASSWORD=postgres
 DB_HOST=localhost
 DB_PORT=5433
 DB_NAME=notas
+# Opcional: caminho onde o ChromaDB salva o índice vetorial quando rodar localmente
+# CHROMA_DIR=./_chromadb
 ```
 
 ### 🔹 6. Inicializar o Banco de Dados
-
-Crie as tabelas definidas no ORM chamando o script de inicialização:
 
 ```bash
 python -m database.init_db
 ```
 
-> Dica: os scripts de setup (`setup_and_run.sh` / `.bat`) já executam esse comando automaticamente, aguardando o banco ficar pronto através do utilitário `database.wait_for_db`.
+> Os scripts de setup aguardam o banco ficar pronto (`python -m database.wait_for_db`) e chamam esse comando automaticamente.
 
-### 🔹 7. Criar Diretório de Uploads (se ainda não existir)
+### 🔹 7. Criar Diretório de Uploads
 
 ```bash
 mkdir -p uploads
 ```
 
-> Os scripts de setup criam automaticamente essa pasta ao final da execução.
+### 🔹 8. (Opcional) Indexar dados para o modo semântico
 
-### 🔹 8. Rodar o Servidor de Desenvolvimento
+Depois de ter alguns movimentos cadastrados (ou após rodar a extração), execute:
+
+```bash
+python scripts/indexar_dados.py
+```
+
+Isso gera/atualiza o índice vetorial do ChromaDB usado pelo modo semântico.
+
+### 🔹 9. Rodar o Servidor de Desenvolvimento
 
 ```bash
 python app.py
 ```
 
-Abra [http://localhost:5000](http://localhost:5000) no navegador para usar a aplicação.
+Abra [http://localhost:5000](http://localhost:5000) no navegador.
 
 ---
 
-## � Executando com Docker
-
-Com o projeto containerizado, basta utilizar o Docker Compose para subir a aplicação e o banco:
+## 📦 Executando com Docker
 
 ```bash
 docker compose up --build
 ```
 
-No primeiro build a imagem da aplicação Flask será criada a partir do `Dockerfile` e o serviço PostgreSQL será iniciado automaticamente. O script de entrada `docker-entrypoint.sh` espera o banco ficar pronto, executa `python -m database.init_db` para garantir as tabelas e depois inicia o Flask. As credenciais usadas vêm do `.env`, mas para o container o host e a porta são substituídos para apontar para o serviço `db` interno (`DB_HOST=db`, `DB_PORT=5432`).
+O `Dockerfile` instala as dependências, o `docker-entrypoint.sh` aguarda o banco, roda `python -m database.init_db` e executa `scripts/indexar_dados.py` caso ainda não exista um índice vetorial (pode ser pulado definindo `SKIP_RAG_INDEX=1`). Em seguida o Flask sobe automaticamente.
 
-- Antes de subir os containers, copie `.env.example` para `.env` e insira sua `GOOGLE_API_KEY`.
-- A aplicação web fica disponível em [http://localhost:5000](http://localhost:5000)
-- Os dados do banco são persistidos no volume `postgres_data`
-- Os arquivos enviados para `uploads/` ficam no volume `uploads_data`
+- Antes de levantar os containers, copie `.env.example` para `.env` e configure `GOOGLE_API_KEY`.
+- A aplicação web fica acessível em [http://localhost:5000](http://localhost:5000).
+- Os dados são persistidos em volumes:
+  - `postgres_data`: dados do PostgreSQL.
+  - `uploads_data`: arquivos enviados.
+  - `chroma_data`: índice vetorial do ChromaDB (`/app/_chromadb`).
 
-Para desligar os serviços:
+Para desligar:
 
 ```bash
 docker compose down
 ```
 
-Se preferir remover os volumes (incluindo os dados do banco), acrescente `-v`:
+Para remover volumes:
 
 ```bash
 docker compose down -v
@@ -130,97 +134,71 @@ docker compose down -v
 
 ---
 
-## �🛠 Tecnologias Utilizadas
-
-* **Python 3.10+**: linguagem principal
-* **Flask**: microframework web para Python
-* **Google Gemini**: inteligência artificial para extração de dados
-* **SQLAlchemy**: ORM para modelagem e persistência dos dados
-* **PostgreSQL 16**: banco de dados relacional (via Docker)
-* **Docker Compose**: orquestração do serviço de banco de dados
-* **python-dotenv**: carregamento de variáveis de ambiente
-* **PyMuPDF (fitz)**: leitura e extração de texto de PDFs
-* **Pillow + pytesseract**: OCR opcional para PDFs sem texto
-* **HTML5, CSS3 e JavaScript**: interface web responsiva
-
----
-
 ## ⚙️ Scripts de Setup e Execução
 
-Para facilitar o uso, o projeto inclui scripts de setup/execução. Eles criam a venv, instalam dependências, configuram o `.env` e tentam subir o PostgreSQL automaticamente (caso Docker/Compose esteja disponível):
-
-- Linux/MacOS: `setup_and_run.sh`
+- Linux/macOS: `setup_and_run.sh`
 - Windows: `setup_and_run.bat`
 
-O que os scripts fazem:
-- Checam Python 3 e criam venv `.venv`
-- Instalam dependências (`requirements.txt`)
-- Verificam o Tesseract (OCR opcional) e informam como instalar
-- Preparam o arquivo `.env` pedindo a `GOOGLE_API_KEY` e preenchendo as variáveis do banco (`DB_*`)
-- Se Docker Compose estiver disponível, sobem o serviço `db` do `docker-compose.yml`, aguardam o PostgreSQL inicializar com `python -m database.wait_for_db` e executam `python -m database.init_db` para garantir as tabelas
-- Garantem a pasta `uploads/`
-- Iniciam a aplicação com `python app.py`
+Eles realizam:
 
-Como usar:
+- Criação/ativação da venv `.venv`.
+- Instalação das dependências (`requirements.txt`).
+- Configuração do `.env` (solicitando a chave do Gemini e preenchendo credenciais padrão do banco).
+- Verificações de Tesseract e instruções de instalação (opcional).
+- Subida opcional do serviço PostgreSQL via Docker Compose e inicialização de tabelas.
+- Criação da pasta `uploads/`.
+- Execução da aplicação (`python app.py`).
+- Orientação para rodar `python scripts/indexar_dados.py` quando desejar habilitar a consulta semântica fora do Docker.
 
-Linux/MacOS:
+Como usar no Linux/macOS:
+
 ```bash
 chmod +x setup_and_run.sh
 ./setup_and_run.sh
 ```
 
-Windows (duplo clique também funciona):
+No Windows:
+
 ```bat
 setup_and_run.bat
 ```
 
-Opcionalmente, exporte a chave antes de rodar:
+---
 
-Linux/MacOS:
-```bash
-export GOOGLE_API_KEY="sua_chave"
-./setup_and_run.sh
-```
+## 🔎 Consultas com RAG
 
-Windows:
-```bat
-set GOOGLE_API_KEY=sua_chave
-setup_and_run.bat
-```
+1. Acesse `/consulta` ou clique em **Consulta RAG** na UI.
+2. Escolha o modo **Simples (SQL)** ou **Semântico (ChromaDB)**.
+3. Escreva a pergunta em linguagem natural (ex.: "Quais foram as últimas contas lançadas para manutenção?").
+4. O frontend envia um POST para `/consultar_rag`. O backend recupera o contexto correspondente, injeta no prompt do Gemini e retorna a resposta.
+5. Para manter o modo semântico atualizado fora do Docker, execute `python scripts/indexar_dados.py` sempre que novos movimentos relevantes forem inseridos.
 
 ---
 
 ## 🔍 Pré-requisitos de OCR (Tesseract)
 
-Se o PDF não tiver texto embutido (apenas imagem), a aplicação usa OCR via `pytesseract` + binário `tesseract`.
+Quando o PDF não contém texto embutido, a aplicação usa OCR via `pytesseract` + binário `tesseract`.
 
-O script `setup_and_run.sh` tenta instalar automaticamente o Tesseract nas distros mais comuns (apt/dnf/pacman) quando você concorda. Caso prefira instalar manualmente:
+Instalação manual:
 
 - Debian/Ubuntu:
-```bash
-sudo apt update && sudo apt install -y tesseract-ocr tesseract-ocr-por tesseract-ocr-eng poppler-utils
-```
-
+  ```bash
+  sudo apt update && sudo apt install -y tesseract-ocr tesseract-ocr-por tesseract-ocr-eng poppler-utils
+  ```
 - Fedora:
-```bash
-sudo dnf install -y tesseract tesseract-langpack-por tesseract-langpack-eng poppler-utils
-```
-
+  ```bash
+  sudo dnf install -y tesseract tesseract-langpack-por tesseract-langpack-eng poppler-utils
+  ```
 - Arch/Manjaro:
-```bash
-sudo pacman -S tesseract tesseract-data-por tesseract-data-eng poppler
-```
+  ```bash
+  sudo pacman -S tesseract tesseract-data-por tesseract-data-eng poppler
+  ```
 
-Se ainda aparecer a mensagem "tesseract is not installed or it's not in your PATH":
-- Verifique se `tesseract` executa no terminal: `tesseract --version`.
-- Reabra o terminal e rode novamente o script para atualizar o PATH da sessão.
-- Em WSL/containers, confirme se o pacote foi instalado dentro do mesmo ambiente do Python.
+Os scripts de setup detectam e orientam caso o Tesseract não esteja instalado.
 
 ---
 
 ## 🧪 Testes Automatizados
-
-O projeto conta com uma suíte de testes (PyTest) cobrindo o agente de persistência, os endpoints `/extrair` e `/lancar_conta`, e o script de inicialização do banco. Para executá-la:
 
 ```bash
 .venv/bin/python -m pytest
@@ -232,50 +210,57 @@ No Windows:
 .venv\Scripts\python -m pytest
 ```
 
-Os scripts de setup já criam e ativam a venv, então basta reutilizá-la.
-
 ---
 
 ## 📊 Inspecionando o Banco de Dados
 
-Para navegar pelos dados de forma visual você pode usar ferramentas gráficas de PostgreSQL:
-
-- **DBeaver Community** (Windows/Linux/macOS): após instalar, crie uma conexão com `localhost`, porta `5433`, banco `notas`, usuário e senha `postgres`.
-- **pgAdmin 4 via Docker**: execute
-	```bash
-	docker run -d --name pgadmin -p 5050:80 \
-		-e PGADMIN_DEFAULT_EMAIL=admin@example.com \
-		-e PGADMIN_DEFAULT_PASSWORD=admin \
-		--network extrair_dados_nota_default \
-		dpage/pgadmin4
-	```
-	Em seguida acesse http://localhost:5050 e cadastre um servidor apontando para o host `leitor_nota_db` (ou `localhost:5433` se exposto localmente) com usuário/senha `postgres`.
+- **DBeaver Community**: configure conexão `localhost:5433`, banco `notas`, usuário/senha `postgres`.
+- **pgAdmin 4 (Docker)**:
+  ```bash
+  docker run -d --name pgadmin -p 5050:80 \
+    -e PGADMIN_DEFAULT_EMAIL=admin@example.com \
+    -e PGADMIN_DEFAULT_PASSWORD=admin \
+    --network extrair_dados_nota_default \
+    dpage/pgadmin4
+  ```
+  Depois acesse http://localhost:5050 e adicione servidor apontando para `leitor_nota_db`.
 
 ---
 
 ## 🔄 Fluxo na Interface Web
 
-1. Selecione um PDF de nota fiscal e clique em **EXTRAIR DADOS**.
-2. Revise a visualização formatada e a aba JSON.
-3. No cartão **Verificação no Sistema**, confira os status:
-	 - Fornecedor e faturado exibem nome, documento e se já existem (com ID quando aplicável).
-	 - Cada despesa classificada informa se já está cadastrada.
-4. Caso esteja tudo correto, clique em **LANÇAR NO SISTEMA** para persistir os dados.
-5. Uma mensagem confirma o sucesso ou aponta o erro encontrado.
+1. Faça upload do PDF e clique em **EXTRAIR DADOS**.
+2. Revise a visualização formatada e o JSON retornado.
+3. Confira o cartão **Verificação no Sistema** para verificação de fornecedor, faturado e categorias.
+4. Clique em **LANÇAR NO SISTEMA** para persistir os dados.
+5. Use a aba **Consulta RAG** para responder perguntas sobre lançamentos já gravados.
+
+---
+
+## 🛠 Tecnologias Utilizadas
+
+- **Python 3.12+**
+- **Flask**
+- **Google Gemini**
+- **SQLAlchemy**
+- **PostgreSQL 16**
+- **Docker & Docker Compose**
+- **python-dotenv**
+- **PyMuPDF (fitz)**
+- **Pillow + pytesseract**
+- **HTML5, CSS3, JavaScript**
+- **ChromaDB + Sentence-Transformers** (RAG semântico)
 
 ---
 
 ## 📄 Considerações Finais
 
-O NotaFiscalAI é modular, com código organizado em pastas (`agents`, `database`, `config`, `uploads`, `templates`, `static`), seguindo boas práticas de desenvolvimento e fácil manutenção.
-
-O projeto serve tanto como ferramenta prática quanto como exemplo de integração entre Flask, IA e manipulação de PDFs.
+O NotaFiscalAI é modular, organizado em pastas (`agents`, `database`, `config`, `templates`, `static`, etc.) e combina processamento de documentos, inteligência artificial e consultas RAG. Ele pode ser usado tanto como ferramenta prática quanto como base para estudos e evoluções futuras.
 
 ---
 
-## 👥 Autor
+## 👥 Autores
 
-📌 **Autores:** 
-* [Julio Cezar](https://github.com/muddyorc)
-* [Rian Guedes](https://github.com/riangrodrigues)
+- [Julio Cezar](https://github.com/muddyorc)
+- [Rian Guedes](https://github.com/riangrodrigues)
 
