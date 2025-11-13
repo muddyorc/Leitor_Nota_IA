@@ -2,16 +2,17 @@
 from __future__ import annotations
 from typing import Callable, Optional
 
+import re
 from pathlib import Path
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, aliased
 from database.connection import SessionLocal
 from config.settings import GOOGLE_API_KEY  # caso precise, mas usamos ia_service para gerar texto
 from agents.AgentePersistencia.processador import PersistenciaAgent
 import os
 
-from database.models import MovimentoContas
+from database.models import Classificacao, MovimentoContas, Pessoas
 
 # --- optional imports for semantic retrieval (only used if installed) ---
 try:
@@ -22,7 +23,39 @@ except Exception:
     CHROMA_AVAILABLE = False
 
 # Use your existing ia wrapper to call Gemini
-from agents.AgenteExtracao.ia_service import extrair_dados_com_llm  # we will call Gemini via a simpler wrapper
+from agents.AgenteExtracao.ia_service import responder_pergunta_com_llm  # Gemini wrapper adaptado para respostas textuais
+
+_STOP_WORDS = {
+    "qual",
+    "quais",
+    "que",
+    "quanto",
+    "quantos",
+    "quando",
+    "como",
+    "para",
+    "com",
+    "dos",
+    "das",
+    "do",
+    "da",
+    "de",
+    "nos",
+    "nas",
+    "uma",
+    "um",
+    "das",
+    "dos",
+    "as",
+    "os",
+    "notas",
+    "nota",
+    "valor",
+    "foi",
+    "foram",
+    "recebidos",
+    "recebido",
+}
 # If you have a dedicated function for prompting Gemini, prefer that. Here we reuse ia_service as it exists. :contentReference[oaicite:4]{index=4}
 
 class ConsultaRagAgent:
@@ -40,7 +73,7 @@ class ConsultaRagAgent:
         self.chroma_dir = chroma_dir or os.getenv("CHROMA_DIR", "./_chromadb")
         self._chroma_client = chroma_client
         self._embed_model = embed_model
-        self._llm_callable = llm_callable or extrair_dados_com_llm
+        self._llm_callable = llm_callable or responder_pergunta_com_llm
 
         if enable_chroma is None:
             enable_chroma = CHROMA_AVAILABLE
@@ -54,6 +87,23 @@ class ConsultaRagAgent:
                 self._enable_chroma = False
                 self._chroma_client = None
                 self._embed_model = None
+
+    @staticmethod
+    def _format_currency(value) -> str:
+        try:
+            numeric = float(value or 0)
+        except (TypeError, ValueError):
+            numeric = 0.0
+        formatted = f"R$ {numeric:,.2f}"
+        return formatted.replace(",", "_").replace(".", ",").replace("_", ".")
+
+    @staticmethod
+    def _should_include_summary(pergunta: str | None) -> bool:
+        if not pergunta:
+            return False
+        termos_chave = ("custo", "gasto", "despesa", "recorr", "combust", "manut", "significativo")
+        pergunta_lower = pergunta.lower()
+        return any(chave in pergunta_lower for chave in termos_chave)
 
     def _init_chroma(self):
         # initializes chroma client and embedder if available
@@ -76,26 +126,155 @@ class ConsultaRagAgent:
                 ChromaSettings(chroma_db_impl="duckdb+parquet", persist_directory=str(persist_path))
             )
 
+    def _get_or_create_collection(self):
+        if not self._enable_chroma or self._chroma_client is None:
+            return None
+        try:
+            return self._chroma_client.get_collection("movimentos")
+        except Exception:
+            try:
+                return self._chroma_client.create_collection("movimentos")
+            except Exception:
+                return None
+
+    def _build_summary_context(self, session: Session, limite: int = 5) -> str:
+        resumo_partes: list[str] = []
+
+        classificacao_totais = (
+            session.query(Classificacao.descricao, func.sum(MovimentoContas.valor_total).label("total"))
+            .join(Classificacao.movimentos)
+            .group_by(Classificacao.descricao)
+            .order_by(func.sum(MovimentoContas.valor_total).desc())
+            .limit(limite)
+            .all()
+        )
+        if classificacao_totais:
+            linhas = [
+                f"- {descricao or 'Sem classificacao'}: {self._format_currency(total)}"
+                for descricao, total in classificacao_totais
+                if total is not None
+            ]
+            if linhas:
+                resumo_partes.append("Classificacoes com maiores gastos:\n" + "\n".join(linhas))
+
+        fornecedor_totais = (
+            session.query(Pessoas.razaosocial, func.sum(MovimentoContas.valor_total).label("total"))
+            .join(MovimentoContas, MovimentoContas.fornecedor_id == Pessoas.id)
+            .group_by(Pessoas.razaosocial)
+            .order_by(func.sum(MovimentoContas.valor_total).desc())
+            .limit(limite)
+            .all()
+        )
+        if fornecedor_totais:
+            linhas = [
+                f"- {nome or 'Fornecedor nao informado'}: {self._format_currency(total)}"
+                for nome, total in fornecedor_totais
+                if total is not None
+            ]
+            if linhas:
+                resumo_partes.append("Fornecedores mais onerosos:\n" + "\n".join(linhas))
+
+        recorrentes = (
+            session.query(
+                MovimentoContas.descricao,
+                func.count(MovimentoContas.id).label("freq"),
+                func.sum(MovimentoContas.valor_total).label("total"),
+            )
+            .group_by(MovimentoContas.descricao)
+            .having(func.count(MovimentoContas.id) > 1)
+            .order_by(func.count(MovimentoContas.id).desc(), func.sum(MovimentoContas.valor_total).desc())
+            .limit(limite)
+            .all()
+        )
+        if recorrentes:
+            linhas = [
+                f"- {descricao or 'Descricao nao informada'}: {freq} ocorrencias somando {self._format_currency(total)}"
+                for descricao, freq, total in recorrentes
+                if total is not None
+            ]
+            if linhas:
+                resumo_partes.append("Gastos recorrentes detectados:\n" + "\n".join(linhas))
+
+        return "\n\n".join(resumo_partes)
+
     # ---------------- RAG Simples ----------------
     def _retrieve_data_simples(self, pergunta: str, limit: int = 10) -> str:
         """Executa uma query SQL direta e retorna um contexto textual"""
         session: Session = self._session_factory()
         try:
-            rows = (
-                session.execute(
-                    select(MovimentoContas).order_by(MovimentoContas.data_emissao.desc()).limit(limit)
-                )
-                .scalars()
-                .all()
+            fornecedor_alias = aliased(Pessoas)
+            faturado_alias = aliased(Pessoas)
+            class_alias = aliased(Classificacao)
+
+            base_stmt = (
+                select(MovimentoContas)
+                .outerjoin(fornecedor_alias, MovimentoContas.fornecedor)
+                .outerjoin(faturado_alias, MovimentoContas.faturado)
+                .outerjoin(class_alias, MovimentoContas.classificacoes)
             )
+
+            tokens_raw = re.findall(r"\b\w{3,}\b", pergunta.lower()) if pergunta else []
+            tokens = []
+            for token in tokens_raw:
+                if token in _STOP_WORDS or token in tokens:
+                    continue
+                tokens.append(token)
+            filters = []
+            for token in tokens[:5]:  # limita tokens relevantes para evitar filtros excessivos
+                pattern = f"%{token}%"
+                filters.extend(
+                    [
+                        MovimentoContas.descricao.ilike(pattern),
+                        MovimentoContas.numero_nota_fiscal.ilike(pattern),
+                        fornecedor_alias.razaosocial.ilike(pattern),
+                        fornecedor_alias.fantasia.ilike(pattern),
+                        faturado_alias.razaosocial.ilike(pattern),
+                        faturado_alias.fantasia.ilike(pattern),
+                        class_alias.descricao.ilike(pattern),
+                    ]
+                )
+
+            stmt = base_stmt
+            if filters:
+                stmt = stmt.where(or_(*filters))
+
+            stmt = stmt.order_by(MovimentoContas.data_emissao.desc()).limit(limit)
+            rows = session.execute(stmt).scalars().unique().all()
+
+            if not rows and filters:
+                fallback_stmt = base_stmt.order_by(MovimentoContas.data_emissao.desc()).limit(limit)
+                rows = session.execute(fallback_stmt).scalars().unique().all()
+
+            resumo_texto = ""
+            if self._should_include_summary(pergunta):
+                resumo_texto = self._build_summary_context(session)
+
             partes = []
             for movimento in rows:
+                fornecedor = None
+                faturado = None
+                if movimento.fornecedor:
+                    fornecedor = movimento.fornecedor.razaosocial or movimento.fornecedor.fantasia
+                if movimento.faturado:
+                    faturado = movimento.faturado.razaosocial or movimento.faturado.fantasia
+
+                classificacoes = [c.descricao for c in movimento.classificacoes or [] if c.descricao]
+                classificacao_texto = ", ".join(classificacoes) if classificacoes else None
+
                 partes.append(
                     "Movimento "
                     f"{movimento.id}: nota {movimento.numero_nota_fiscal}, "
                     f"data {movimento.data_emissao}, valor {movimento.valor_total}, descricao: {movimento.descricao}"
+                    + (f", fornecedor: {fornecedor}" if fornecedor else "")
+                    + (f", faturado: {faturado}" if faturado else "")
+                    + (f", classificações: {classificacao_texto}" if classificacao_texto else "")
                 )
             contexto = "\n".join(partes) or "Nenhum registro encontrado."
+            if resumo_texto:
+                if contexto and contexto != "Nenhum registro encontrado.":
+                    contexto = f"{contexto}\n\nResumo financeiro:\n{resumo_texto}"
+                else:
+                    contexto = f"Resumo financeiro:\n{resumo_texto}"
             return contexto
         finally:
             session.close()
@@ -108,9 +287,7 @@ class ConsultaRagAgent:
             f"Responda a seguinte pergunta do usuário: {pergunta}\n\n"
             f"Se os dados não forem suficientes, informe que a resposta não pode ser encontrada."
         )
-        # Reutiliza sua função que chama Gemini (ela retorna texto). :contentReference[oaicite:5]{index=5}
-        # Aqui supomos que extrair_dados_com_llm retorna texto. Para prompts de consulta é preferível ter outra função,
-        # mas usamos a existente para manter compatibilidade; adapte se tiver wrapper específico.
+        # Reutiliza a função de consulta ao Gemini configurada para respostas textuais.
         resposta = self._llm_callable(prompt)
         return resposta or "Falha ao gerar resposta via LLM."
 
@@ -119,23 +296,53 @@ class ConsultaRagAgent:
         if not self._enable_chroma or self._chroma_client is None or self._embed_model is None:
             return "ChromaDB ou model de embeddings não configurado."
         query_emb = self._embed_model.encode([pergunta])[0].tolist()
-        collection = None
+        # Ensure the semantic collection exists and has data before querying embeddings.
+        collection = self._get_or_create_collection()
+        if collection is None:
+            return "Coleção Chroma 'movimentos' não encontrada."
+
         try:
-            collection = self._chroma_client.get_collection("movimentos")
+            total_docs = collection.count()
         except Exception:
-            # tentativa de fallback
+            total_docs = 0
+
+        if total_docs == 0:
             try:
-                collection = self._chroma_client.create_collection("movimentos")
+                self.indexar_movimentos_para_chroma()
+                collection = self._get_or_create_collection()
             except Exception:
-                return "Coleção Chroma 'movimentos' não encontrada."
-        results = collection.query(query_embeddings=[query_emb], n_results=k, include=['metadatas', 'documents', 'ids'])
+                collection = None
+
+            if collection is None:
+                return self._retrieve_data_simples(pergunta)
+
+            try:
+                total_docs = collection.count()
+            except Exception:
+                total_docs = 0
+
+        results = collection.query(query_embeddings=[query_emb], n_results=k, include=['metadatas', 'documents'])
         docs = results.get('documents', [[]])[0]
         metadatas = results.get('metadatas', [[]])[0]
+        if not docs:
+            return self._retrieve_data_simples(pergunta)
+
         partes = []
         for i, doc in enumerate(docs):
             meta = metadatas[i] if i < len(metadatas) else {}
             partes.append(f"Documento {i+1} (id={meta.get('id')}): {doc}")
-        return "\n".join(partes) or "Nenhum documento vetorial encontrado."
+
+        if not partes:
+            return self._retrieve_data_simples(pergunta)
+
+        contexto_semantico = "\n".join(partes)
+
+        # Complementa com busca simples para enriquecer contexto e evitar respostas vazias
+        contexto_simples = self._retrieve_data_simples(pergunta)
+        if contexto_simples and contexto_simples.strip() and contexto_simples.strip() != "Nenhum registro encontrado.":
+            return f"{contexto_semantico}\n\nContexto adicional (SQL):\n{contexto_simples}"
+
+        return contexto_semantico
 
     def executar_consulta_semantica(self, pergunta: str) -> str:
         contexto = self._retrieve_data_semantico(pergunta)
@@ -160,21 +367,36 @@ class ConsultaRagAgent:
             ids = []
             metadatas = []
             for movimento in rows:
+                fornecedor = None
+                faturado = None
+                if movimento.fornecedor:
+                    fornecedor = movimento.fornecedor.razaosocial or movimento.fornecedor.fantasia
+                if movimento.faturado:
+                    faturado = movimento.faturado.razaosocial or movimento.faturado.fantasia
+
+                classificacoes = [c.descricao for c in movimento.classificacoes or [] if c.descricao]
+                classificacao_texto = ", ".join(classificacoes) if classificacoes else "Sem classificação"
+
                 texto = (
                     "Movimento "
-                    f"{movimento.id}: nota {movimento.numero_nota_fiscal}, "
-                    f"data {movimento.data_emissao}, valor {movimento.valor_total}, descricao: {movimento.descricao}"
+                    f"{movimento.id}: nota {movimento.numero_nota_fiscal or 'N/A'}, "
+                    f"emitida em {movimento.data_emissao}, valor total {movimento.valor_total}, "
+                    f"descricao: {movimento.descricao or 'Sem descrição'}, "
+                    f"fornecedor: {fornecedor or 'Não informado'}, "
+                    f"faturado: {faturado or 'Não informado'}, "
+                    f"classificação: {classificacao_texto}"
                 )
                 docs.append(texto)
                 ids.append(str(movimento.id))
                 metadatas.append({"id": movimento.id})
-            collection = None
-            try:
-                collection = self._chroma_client.get_collection("movimentos")
-            except Exception:
-                collection = self._chroma_client.create_collection("movimentos")
+            collection = self._get_or_create_collection()
+            if collection is None:
+                raise RuntimeError("Coleção Chroma 'movimentos' não encontrada.")
+            if not docs:
+                return {"indexed": 0}
             embs = self._embed_model.encode(docs).tolist()
-            collection.add(documents=docs, embeddings=embs, ids=ids, metadatas=metadatas)
+            add_fn = getattr(collection, "upsert", collection.add)
+            add_fn(documents=docs, embeddings=embs, ids=ids, metadatas=metadatas)
 
             if hasattr(self._chroma_client, "persist"):
                 self._chroma_client.persist()

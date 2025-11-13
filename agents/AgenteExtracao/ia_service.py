@@ -54,3 +54,20 @@ def extrair_dados_com_llm(texto):
     except Exception as e:
         print(f"Erro Gemini: {e}")
         return None
+
+
+def responder_pergunta_com_llm(prompt: str, *, temperature: float = 0.2) -> str | None:
+    """Gera uma resposta textual para consultas RAG usando Gemini."""
+    try:
+        model = genai.GenerativeModel(
+            "gemini-2.5-flash-lite",
+            generation_config={"temperature": temperature},
+        )
+        response = model.generate_content(prompt)
+        if response and response.candidates:
+            texto = response.candidates[0].content.parts[0].text
+            return texto.strip() if texto else None
+        return None
+    except Exception as e:  # noqa: BLE001
+        print(f"Erro Gemini (consulta): {e}")
+        return None
