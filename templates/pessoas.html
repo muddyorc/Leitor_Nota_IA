@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+
+{% block title %}Manter Pessoas{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h1>Manter Pessoas</h1>
+      <p class="page-subtitle">Gerencie fornecedores, clientes e faturados utilizados nos lançamentos.</p>
+    </div>
+    <button type="button" class="link-button primary" data-action="open-form" data-form="pessoa-form-panel">Nova pessoa</button>
+  </div>
+
+  <form id="pessoas-filtros" class="search-bar" method="get">
+    <input type="text" name="q" placeholder="Buscar por nome ou documento" value="{{ search_term }}" />
+    <select name="categoria">
+      {% for item in categorias %}
+        <option value="{{ item }}" {% if categoria == item %}selected{% endif %}>{{ item.title() }}</option>
+      {% endfor %}
+    </select>
+    <input type="hidden" name="sort" value="{{ sort_field }}">
+    <input type="hidden" name="dir" value="{{ sort_direction }}">
+    <div class="search-actions">
+      <button type="submit">Filtrar</button>
+      <a href="{{ url_for('pessoas_page') }}" class="link-button secondary">Limpar</a>
+    </div>
+  </form>
+
+  <div id="pessoa-form-panel" class="crud-panel hidden" data-title-new="Nova pessoa" data-title-edit="Editar pessoa">
+    <div class="crud-panel__header">
+      <h2 data-role="crud-title">Nova pessoa</h2>
+      <button type="button" class="link-button secondary" data-action="cancel-form" data-form="pessoa-form-panel">Fechar</button>
+    </div>
+    <form class="crud-form" action="{{ url_for('salvar_pessoa') }}" method="post">
+      <input type="hidden" name="id">
+      <input type="hidden" name="status" value="ATIVO" data-default="ATIVO">
+
+      <div class="form-grid">
+        <label>
+          Tipo
+          <select name="tipo" required>
+            <option value="">Selecione</option>
+            <option value="FORNECEDOR">Fornecedor</option>
+            <option value="CLIENTE">Cliente</option>
+            <option value="FATURADO">Faturado</option>
+          </select>
+        </label>
+        <label>
+          Razão social
+          <input type="text" name="razaosocial" placeholder="Nome completo ou razão social">
+        </label>
+        <label>
+          Nome fantasia
+          <input type="text" name="fantasia" placeholder="Nome fantasia">
+        </label>
+        <label>
+          Documento
+          <input type="text" name="documento" placeholder="CNPJ/CPF">
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit">Salvar</button>
+        <button type="button" class="link-button secondary" data-action="cancel-form" data-form="pessoa-form-panel">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>
+            <button type="button" class="sort-toggle" data-form="pessoas-filtros" data-sort="razao">
+              Razão / Fantasia
+              {% if sort_field == 'razao' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>
+            <button type="button" class="sort-toggle" data-form="pessoas-filtros" data-sort="documento">
+              Documento
+              {% if sort_field == 'documento' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>
+            <button type="button" class="sort-toggle" data-form="pessoas-filtros" data-sort="tipo">
+              Tipo
+              {% if sort_field == 'tipo' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pessoa in pessoas %}
+          <tr>
+            <td>
+              <strong>{{ pessoa.razaosocial or 'Sem razão social' }}</strong><br>
+              <small>{{ pessoa.fantasia or 'Sem fantasia' }}</small>
+            </td>
+            <td>{{ pessoa.documento or '—' }}</td>
+            <td>{{ pessoa.tipo or '—' }}</td>
+            <td class="table-actions">
+              <button type="button" class="link-button" data-action="open-form" data-form="pessoa-form-panel" data-record='{{ pessoa | tojson }}'>Editar</button>
+              <form class="inline-form" method="post" action="{{ url_for('excluir_pessoa', pessoa_id=pessoa.id) }}" onsubmit="return confirm('Deseja marcar esta pessoa como INATIVO?');">
+                <button type="submit" class="link-button danger">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4" class="empty-state">Nenhuma pessoa ativa encontrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/crud.js') }}"></script>
+<script src="{{ url_for('static', filename='js/table_controls.js') }}"></script>
+{% endblock %}

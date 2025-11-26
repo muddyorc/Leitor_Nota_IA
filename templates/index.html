@@ -1,44 +1,43 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Extração de Dados de Nota Fiscal</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-  <div class="container">
-    <h1>Extração de Dados de Nota Fiscal</h1>
+{% extends "layout.html" %}
 
-    <div class="page-actions">
-      <a href="{{ url_for('consulta_page') }}" class="link-button secondary">Ir para a Consulta RAG</a>
+{% block title %}Extração de Dados{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h1>Extração de Dados de Nota Fiscal</h1>
+      <p class="page-subtitle">Envie um PDF para extrair e validar automaticamente as informações da nota.</p>
     </div>
-
-    <!-- Upload -->
-    <form id="uploadForm" enctype="multipart/form-data">
-      <label for="file">Selecione o arquivo PDF da nota fiscal</label>
-      <input type="file" id="file" name="file" accept="application/pdf">
-      <br>
-      <button type="submit">EXTRAIR DADOS</button>
-      <button type="button" id="limpar">LIMPAR EXTRAÇÃO</button>
-    </form>
-
-    <!-- Resultado -->
-    <div id="resultado" style="display:none;">
-      <h2>Dados Extraídos</h2>
-      <div class="tabs">
-        <button type="button" class="active" onclick="mostrar('formatado', event)">Visualização Formatada</button>
-        <button type="button" onclick="mostrar('json', event)">JSON</button>
-      </div>
-      <div id="formatado" class="tab-content"></div>
-      <pre id="json" class="tab-content" style="display:none;"></pre>
-      <div id="verificacao" class="card status-card" style="display:none;"></div>
-      <div class="acoes-lancamento" style="display:none;">
-        <button type="button" id="lancar" class="primary">LANÇAR NO SISTEMA</button>
-        <div id="lancarMensagem" class="mensagem"></div>
-      </div>
-    </div>
+    <a href="{{ url_for('consulta_page') }}" class="link-button secondary">Ir para a Consulta RAG</a>
   </div>
 
-  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
-</html>
+  <form id="uploadForm" class="card" enctype="multipart/form-data">
+    <label for="file">Selecione o arquivo PDF da nota fiscal</label>
+    <input type="file" id="file" name="file" accept="application/pdf">
+    <div class="form-actions">
+      <button type="submit">EXTRAIR DADOS</button>
+      <button type="button" id="limpar" class="link-button secondary">LIMPAR EXTRAÇÃO</button>
+    </div>
+  </form>
+
+  <div id="resultado" class="card" style="display:none;">
+    <h2>Dados Extraídos</h2>
+    <div class="tabs">
+      <button type="button" class="active" onclick="mostrar('formatado', event)">Visualização Formatada</button>
+      <button type="button" onclick="mostrar('json', event)">JSON</button>
+    </div>
+    <div id="formatado" class="tab-content"></div>
+    <pre id="json" class="tab-content" style="display:none;"></pre>
+    <div id="verificacao" class="card status-card" style="display:none;"></div>
+    <div class="acoes-lancamento" style="display:none;">
+      <button type="button" id="lancar" class="primary">LANÇAR NO SISTEMA</button>
+      <div id="lancarMensagem" class="mensagem"></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% endblock %}

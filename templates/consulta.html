@@ -1,74 +1,71 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Consulta RAG</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-  <div class="container">
-    <div class="navbar">
+{% extends "layout.html" %}
+
+{% block title %}Consulta RAG{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
       <h1>Consulta Analítica (RAG)</h1>
-      <a href="{{ url_for('index') }}" class="link-button secondary">Voltar para a Extração</a>
-    </div>
-
-    <p class="page-subtitle">Explore as contas já cadastradas utilizando busca direta ou semântica.</p>
-
-    <form id="consultaForm" class="rag-form">
-      <div class="form-group">
-        <label for="modo">Modo de busca</label>
-        <select id="modo" name="modo">
-          <option value="simples">RAG Simples (SQL)</option>
-          <option value="semantico">RAG Semântico (Embeddings)</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="pergunta">Pergunta</label>
-        <textarea id="pergunta" name="pergunta" rows="6" placeholder="Digite sua pergunta..."></textarea>
-      </div>
-
-      <div class="form-actions">
-        <button type="submit">Consultar</button>
-      </div>
-    </form>
-
-    <div class="card response-card">
-      <h2>Resposta</h2>
-      <div id="resposta">Nenhuma consulta realizada ainda.</div>
+      <p class="page-subtitle">Explore as contas cadastradas utilizando busca direta (SQL) ou semântica.</p>
     </div>
   </div>
 
-  <script>
-    const form = document.getElementById('consultaForm');
-    const respostaDiv = document.getElementById('resposta');
+  <form id="consultaForm" class="rag-form card">
+    <div class="form-group">
+      <label for="modo">Modo de busca</label>
+      <select id="modo" name="modo">
+        <option value="simples">RAG Simples (SQL)</option>
+        <option value="semantico">RAG Semântico (Embeddings)</option>
+      </select>
+    </div>
 
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      respostaDiv.textContent = 'Processando...';
+    <div class="form-group">
+      <label for="pergunta">Pergunta</label>
+      <textarea id="pergunta" name="pergunta" rows="6" placeholder="Digite sua pergunta..."></textarea>
+    </div>
 
-      const modo = document.getElementById('modo').value;
-      const pergunta = document.getElementById('pergunta').value;
+    <div class="form-actions">
+      <button type="submit">Consultar</button>
+    </div>
+  </form>
 
-      try {
-        const response = await fetch('/consultar_rag', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ modo, pergunta })
-        });
+  <div class="card response-card">
+    <h2>Resposta</h2>
+    <div id="resposta">Nenhuma consulta realizada ainda.</div>
+  </div>
+</section>
+{% endblock %}
 
-        const data = await response.json();
-        if (!response.ok) {
-          respostaDiv.textContent = JSON.stringify(data, null, 2);
-          return;
-        }
+{% block extra_js %}
+<script>
+  const form = document.getElementById('consultaForm');
+  const respostaDiv = document.getElementById('resposta');
 
-        respostaDiv.textContent = data.resposta || JSON.stringify(data, null, 2);
-      } catch (error) {
-        respostaDiv.textContent = 'Erro: ' + error.message;
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    respostaDiv.textContent = 'Processando...';
+
+    const modo = document.getElementById('modo').value;
+    const pergunta = document.getElementById('pergunta').value;
+
+    try {
+      const response = await fetch('/consultar_rag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modo, pergunta })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        respostaDiv.textContent = JSON.stringify(data, null, 2);
+        return;
       }
-    });
-  </script>
-</body>
-</html>
+
+      respostaDiv.textContent = data.resposta || JSON.stringify(data, null, 2);
+    } catch (error) {
+      respostaDiv.textContent = 'Erro: ' + error.message;
+    }
+  });
+</script>
+{% endblock %}

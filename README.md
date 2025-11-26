@@ -62,6 +62,8 @@ Crie um arquivo `.env` na raiz (os scripts de setup criam automaticamente) e inf
 
 ```env
 GOOGLE_API_KEY=your_google_api_key_here
+# Opcional: string completa do Postgres (Render fornece Internal/External URLs)
+# DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/notas
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_HOST=localhost
@@ -70,6 +72,8 @@ DB_NAME=notas
 # Opcional: caminho onde o ChromaDB salva o índice vetorial quando rodar localmente
 # CHROMA_DIR=./_chromadb
 ```
+
+> Se `DATABASE_URL` estiver definido, ele sobrescreve `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` e `DB_NAME`. Use-o para apontar diretamente para o Postgres hospedado no Render.
 
 ### 🔹 6. Inicializar o Banco de Dados
 
@@ -85,7 +89,21 @@ python -m database.init_db
 mkdir -p uploads
 ```
 
-### 🔹 8. (Opcional) Indexar dados para o modo semântico
+### 🔹 8. Popular o banco com dados de teste (Seed)
+
+O enunciado demanda um ambiente navegável com pelo menos 200 registros. Rode o script abaixo
+uma única vez (após `python -m database.init_db`) para gerar ~50 pessoas, ~10 classificações e 200
+movimentos distribuídos em datas aleatórias:
+
+```bash
+python scripts/seed_database.py
+```
+
+Se precisar repetir o processo, utilize `--force` para ignorar a checagem de dados existentes e
+`--seed 42` (por exemplo) para resultados reproduzíveis. Há também parâmetros opcionais como
+`--movimentos 300` para ajustar volumes específicos.
+
+### 🔹 9. (Opcional) Indexar dados para o modo semântico
 
 Depois de ter alguns movimentos cadastrados (ou após rodar a extração), execute:
 
@@ -95,7 +113,7 @@ python scripts/indexar_dados.py
 
 Isso gera/atualiza o índice vetorial do ChromaDB usado pelo modo semântico.
 
-### 🔹 9. Rodar o Servidor de Desenvolvimento
+### 🔹 10. Rodar o Servidor de Desenvolvimento
 
 ```bash
 python app.py
@@ -111,7 +129,7 @@ Abra [http://localhost:5000](http://localhost:5000) no navegador.
 docker compose up --build
 ```
 
-O `Dockerfile` instala as dependências, o `docker-entrypoint.sh` aguarda o banco, roda `python -m database.init_db` e executa `scripts/indexar_dados.py` caso ainda não exista um índice vetorial (pode ser pulado definindo `SKIP_RAG_INDEX=1`). Em seguida o Flask sobe automaticamente.
+O `Dockerfile` instala as dependências, o `docker-entrypoint.sh` aguarda o banco, roda `python -m database.init_db` e executa `scripts/indexar_dados.py` caso ainda não exista um índice vetorial (pode ser pulado definindo `SKIP_RAG_INDEX=1`). Em seguida o servidor **gunicorn** é iniciado escutando em `0.0.0.0:${PORT:-5000}` (a variável `PORT` pode ser definida pelo provedor de nuvem ou manualmente).
 
 - Antes de levantar os containers, copie `.env.example` para `.env` e configure `GOOGLE_API_KEY`.
 - A aplicação web fica acessível em [http://localhost:5000](http://localhost:5000).
@@ -131,6 +149,52 @@ Para remover volumes:
 ```bash
 docker compose down -v
 ```
+
+---
+
+## ☁️ Deploy em Produção (Render / PythonAnywhere)
+
+As etapas abaixo cumprem o **Bloco de Tarefas 3** e permitem subir o backend em um ambiente distribuído.
+
+### 1. Variáveis obrigatórias
+
+Configure os seguintes valores no painel do provedor (nunca commite um `.env` com chaves reais):
+
+- `GOOGLE_API_KEY`
+- `DATABASE_URL` (string completa do PostgreSQL provido pelo Render ou outro serviço)
+- `FLASK_SECRET_KEY`
+- `CHROMA_DIR` (opcional – ex.: `/tmp/chroma` quando rodar em container efêmero)
+- `SKIP_RAG_INDEX=1` (opcional, quando preferir indexar manualmente)
+
+### 2. Banco de Dados no Render
+
+1. Crie/acesse uma conta em [render.com](https://render.com/).
+2. Vá em **New ➜ PostgreSQL** e escolha o plano gratuito ou o que fizer sentido.
+3. Após a criação, copie:
+  - **Internal Database URL** → use dentro do próprio Render (variável `DATABASE_URL`).
+  - **External Database URL** → use localmente para migrações/seeds (por exemplo, exporte a URL e rode `DATABASE_URL=... python scripts/seed_database.py`).
+4. Atualize seu `.env` local para apontar para essa URL quando precisar testar contra o banco hospedado.
+
+### 3. Backend no Render (Web Service Docker)
+
+1. Clique em **New ➜ Web Service** e conecte o repositório `muddyorc/Leitor_Nota_IA` (branch `feature/etapa4-crud-ui` ou `main`).
+2. Selecione **Docker** como ambiente de build. O Render detectará o `Dockerfile` e executará `docker build` automaticamente.
+3. Não há comando de start manual: o `docker-entrypoint.sh` já executa `python -m database.wait_for_db`, `python -m database.init_db`, indexa (se necessário) e inicia o `gunicorn`.
+4. Defina as variáveis de ambiente citadas acima no painel **Environment**.
+5. Garanta que o serviço do banco (Internal Database) esteja listado em **Environment ➜ Private Services** para autenticar via rede interna.
+6. Caso o Render forneça um `PORT`, ele será honrado automaticamente. Em motores que não definem `PORT`, configure um valor (ex.: `5000`).
+
+### 4. Backend no PythonAnywhere (alternativa sem Docker)
+
+1. Faça upload do código ou conecte o repositório via Git.
+2. Crie um **Virtualenv Python 3.12** e rode `pip install -r requirements.txt`.
+3. Defina as variáveis de ambiente em **Web ➜ WSGI configuration** (use `os.environ[...] = ...`).
+4. Ajuste o arquivo WSGI para expor a aplicação: `from app import app as application`.
+5. Antes do primeiro request, rode `python -m database.init_db` no console apontando para o mesmo `DATABASE_URL` do Render (ou um Postgres hospedado no próprio PythonAnywhere se preferir).
+
+### 5. Frontend na Vercel (opcional)
+
+Este projeto usa Flask + Jinja para servir o frontend. Só utilize a Vercel caso você extraia as telas para um SPA (React/Vue). Nesse cenário, exponha apenas a API Flask (Render/PythonAnywhere) e configure as origens permitidas.
 
 ---
 
@@ -172,6 +236,8 @@ setup_and_run.bat
 3. Escreva a pergunta em linguagem natural (ex.: "Quais foram as últimas contas lançadas para manutenção?").
 4. O frontend envia um POST para `/consultar_rag`. O backend recupera o contexto correspondente, injeta no prompt do Gemini e retorna a resposta.
 5. Para manter o modo semântico atualizado fora do Docker, execute `python scripts/indexar_dados.py` sempre que novos movimentos relevantes forem inseridos.
+
+> 💡 O RAG **Simples** agora possui um classificador leve de intenções. Perguntas sobre contas a pagar recentes, fornecedores com muitos lançamentos, parcelas em aberto, classificações mais onerosas e notas do tipo RECEBER são respondidas diretamente com SQL parametrizado antes mesmo de chamar o LLM. Para outros cenários, o comportamento segue igual: o contexto em texto é montado e o Gemini responde com base nos registros disponíveis.
 
 ---
 

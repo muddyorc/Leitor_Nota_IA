@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+
+{% block title %}Manter Classificações{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h1>Manter Classificações</h1>
+      <p class="page-subtitle">Controle categorias de receita e despesa usadas pela IA e pelo usuário.</p>
+    </div>
+    <button type="button" class="link-button primary" data-action="open-form" data-form="class-form-panel">Nova classificação</button>
+  </div>
+
+  <form id="class-filtros" class="search-bar" method="get">
+    <input type="text" name="q" placeholder="Buscar por descrição" value="{{ search_term }}" />
+    <select name="tipo">
+      {% for item in tipos %}
+        <option value="{{ item }}" {% if tipo_filtro == item %}selected{% endif %}>{{ item.title() }}</option>
+      {% endfor %}
+    </select>
+    <input type="hidden" name="sort" value="{{ sort_field }}">
+    <input type="hidden" name="dir" value="{{ sort_direction }}">
+    <div class="search-actions">
+      <button type="submit">Filtrar</button>
+      <a href="{{ url_for('classificacoes_page') }}" class="link-button secondary">Limpar</a>
+    </div>
+  </form>
+
+  <div id="class-form-panel" class="crud-panel hidden" data-title-new="Nova classificação" data-title-edit="Editar classificação">
+    <div class="crud-panel__header">
+      <h2 data-role="crud-title">Nova classificação</h2>
+      <button type="button" class="link-button secondary" data-action="cancel-form" data-form="class-form-panel">Fechar</button>
+    </div>
+    <form class="crud-form" action="{{ url_for('salvar_classificacao') }}" method="post">
+      <input type="hidden" name="id">
+      <input type="hidden" name="status" value="ATIVO" data-default="ATIVO">
+      <div class="form-grid">
+        <label>
+          Tipo
+          <select name="tipo" required>
+            <option value="">Selecione</option>
+            <option value="RECEITA">Receita</option>
+            <option value="DESPESA">Despesa</option>
+          </select>
+        </label>
+        <label>
+          Descrição
+          <input type="text" name="descricao" required>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit">Salvar</button>
+        <button type="button" class="link-button secondary" data-action="cancel-form" data-form="class-form-panel">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>
+            <button type="button" class="sort-toggle" data-form="class-filtros" data-sort="descricao">
+              Descrição
+              {% if sort_field == 'descricao' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>
+            <button type="button" class="sort-toggle" data-form="class-filtros" data-sort="tipo">
+              Tipo
+              {% if sort_field == 'tipo' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for classif in classificacoes %}
+          <tr>
+            <td>{{ classif.descricao or 'Sem descrição' }}</td>
+            <td>{{ classif.tipo or '—' }}</td>
+            <td class="table-actions">
+              <button type="button" class="link-button" data-action="open-form" data-form="class-form-panel" data-record='{{ classif | tojson }}'>Editar</button>
+              <form class="inline-form" method="post" action="{{ url_for('excluir_classificacao', class_id=classif.id) }}" onsubmit="return confirm('Deseja marcar esta classificação como INATIVO?');">
+                <button type="submit" class="link-button danger">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="3" class="empty-state">Nenhuma classificação ativa encontrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/crud.js') }}"></script>
+<script src="{{ url_for('static', filename='js/table_controls.js') }}"></script>
+{% endblock %}

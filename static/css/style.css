@@ -12,6 +12,10 @@ body {
   padding: 20px;
 }
 
+.hidden {
+  display: none !important;
+}
+
 /* ====== CONTAINER ====== */
 .container {
   max-width: 850px;
@@ -111,6 +115,12 @@ button:hover {
 .link-button.primary {
   background: #0d6efd;
   color: #ffffff;
+}
+
+.link-button.danger {
+  background: transparent;
+  border: 1px solid #ff6b6b;
+  color: #ff6b6b;
 }
 
 .link-button:hover {
@@ -326,5 +336,252 @@ button.primary {
 
 button.primary:hover {
   background: #157347;
+}
+
+/* ====== LAYOUT ====== */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app-header {
+  background: #1e1e1e;
+  border-radius: 14px;
+  padding: 18px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.brand-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.brand-subtitle {
+  color: #a0a0a0;
+  font-size: 0.85rem;
+}
+
+.app-nav {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-nav a {
+  padding: 10px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #d0d0d0;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.app-nav a:hover,
+.app-nav a.active {
+  color: #ffffff;
+  border-color: #0d6efd;
+  background: rgba(13, 110, 253, 0.15);
+}
+
+.app-main {
+  flex: 1;
+}
+
+.panel {
+  background: #1c1c1c;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.5s ease;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.panel-header h1 {
+  text-align: left;
+  margin: 0;
+}
+
+.panel-header .page-subtitle {
+  text-align: left;
+  margin: 6px 0 0;
+}
+
+.search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.search-bar input,
+.search-bar select {
+  flex: 1;
+  min-width: 180px;
+}
+
+.search-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid #2b2b2b;
+  padding: 14px 10px;
+  text-align: left;
+}
+
+.data-table th {
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: #9f9f9f;
+}
+
+.sort-toggle {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sort-toggle:hover {
+  color: #ffffff;
+}
+
+.sort-indicator {
+  font-size: 0.9rem;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inline-form {
+  display: inline;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: #8c8c8c;
+}
+
+.crud-panel {
+  background: #202020;
+  border: 1px solid #2a2a2a;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 28px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.crud-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+}
+
+.form-grid label {
+  text-align: left;
+}
+
+.crud-form select,
+.crud-form input,
+.crud-form textarea {
+  width: 100%;
+}
+
+.crud-form select[multiple] {
+  min-height: 140px;
+}
+
+.flash-container {
+  margin-bottom: 20px;
+}
+
+.flash-message {
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.flash-message.success {
+  background: rgba(25, 135, 84, 0.15);
+  color: #82f6c7;
+  border: 1px solid rgba(25, 135, 84, 0.5);
+}
+
+.flash-message.error {
+  background: rgba(220, 53, 69, 0.15);
+  color: #ffb2b7;
+  border: 1px solid rgba(220, 53, 69, 0.5);
+}
+
+@media (max-width: 768px) {
+  .panel {
+    padding: 20px;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
