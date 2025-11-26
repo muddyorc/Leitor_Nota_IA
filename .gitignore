@@ -1,28 +1,28 @@
-# Python
+# Virtual environments
+.venv/
+venv/
+
+# Python cache
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.sqlite3
 
-# Ambiente virtual
-venv/
-env/
-.venv/
+# IDE settings
+.vscode/
+.idea/
+*.swp
 
-# Arquivos temporários do sistema
+# OS artifacts
 .DS_Store
 Thumbs.db
 
-# Pastas de uploads ou arquivos gerados
-uploads/
-
-# Configurações locais
-*.env
-
-# Logs
+# Logs and temp files
 *.log
+*.tmp
 
-# IDEs
-.vscode/
-.idea/
+# Project data directories
+uploads/
+_chromadb/
+
+# Environment variables
+.env
+.env.*

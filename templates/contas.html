@@ -1,0 +1,163 @@
+{% extends "layout.html" %}
+
+{% block title %}Manter Contas{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h1>Manter Contas</h1>
+      <p class="page-subtitle">Visualize, crie e ajuste contas lançadas automaticamente ou manualmente.</p>
+    </div>
+    <button type="button" class="link-button primary" data-action="open-form" data-form="conta-form-panel">Nova conta</button>
+  </div>
+
+  <form id="contas-filtros" class="search-bar" method="get">
+    <input type="text" name="q" placeholder="Buscar por descrição ou número da nota" value="{{ search_term }}" />
+    <input type="hidden" name="sort" value="{{ sort_field }}">
+    <input type="hidden" name="dir" value="{{ sort_direction }}">
+    <div class="search-actions">
+      <button type="submit">Buscar</button>
+      <a href="{{ url_for('contas_page') }}" class="link-button secondary">Limpar</a>
+    </div>
+  </form>
+
+  <div id="conta-form-panel" class="crud-panel hidden" data-title-new="Nova conta" data-title-edit="Editar conta">
+    <div class="crud-panel__header">
+      <h2 data-role="crud-title">Nova conta</h2>
+      <button type="button" class="link-button secondary" data-action="cancel-form" data-form="conta-form-panel">Fechar</button>
+    </div>
+    <form class="crud-form" action="{{ url_for('salvar_conta') }}" method="post">
+      <input type="hidden" name="id">
+      <input type="hidden" name="status" value="ATIVO" data-default="ATIVO">
+
+      <div class="form-grid">
+        <label>
+          Descrição
+          <input type="text" name="descricao" required>
+        </label>
+        <label>
+          Tipo
+          <select name="tipo">
+            <option value="">Selecione</option>
+            <option value="PAGAR">Pagar</option>
+            <option value="RECEBER">Receber</option>
+          </select>
+        </label>
+        <label>
+          Nº da nota fiscal
+          <input type="text" name="numero_nota_fiscal">
+        </label>
+        <label>
+          Data de emissão
+          <input type="date" name="data_emissao">
+        </label>
+        <label>
+          Valor total
+          <input type="number" name="valor_total" step="0.01" min="0">
+        </label>
+        <label>
+          Fornecedor
+          <select name="fornecedor_id">
+            <option value="">Selecione</option>
+            {% for pessoa in pessoas %}
+              <option value="{{ pessoa.id }}">{{ pessoa.nome }}{% if pessoa.tipo %} ({{ pessoa.tipo }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Faturado
+          <select name="faturado_id">
+            <option value="">Selecione</option>
+            {% for pessoa in pessoas %}
+              <option value="{{ pessoa.id }}">{{ pessoa.nome }}{% if pessoa.tipo %} ({{ pessoa.tipo }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Classificações
+          <select name="classificacao_ids" multiple size="4">
+            {% for item in classificacoes %}
+              <option value="{{ item.id }}">{{ item.descricao }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit">Salvar</button>
+        <button type="button" class="link-button secondary" data-action="cancel-form" data-form="conta-form-panel">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>
+            <button type="button" class="sort-toggle" data-form="contas-filtros" data-sort="nota">
+              Nota
+              {% if sort_field == 'nota' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>
+            <button type="button" class="sort-toggle" data-form="contas-filtros" data-sort="descricao">
+              Descrição
+              {% if sort_field == 'descricao' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>
+            <button type="button" class="sort-toggle" data-form="contas-filtros" data-sort="valor">
+              Valor
+              {% if sort_field == 'valor' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>
+            <button type="button" class="sort-toggle" data-form="contas-filtros" data-sort="data">
+              Emissão
+              {% if sort_field == 'data' %}<span class="sort-indicator">{{ '↑' if sort_direction == 'asc' else '↓' }}</span>{% endif %}
+            </button>
+          </th>
+          <th>Fornecedor / Faturado</th>
+          <th>Classificações</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for conta in contas %}
+          <tr>
+            <td>{{ conta.numero_nota_fiscal or '—' }}</td>
+            <td>
+              <strong>{{ conta.descricao or 'Sem descrição' }}</strong><br>
+              <small>Status: {{ conta.status or 'ATIVO' }}</small>
+            </td>
+            <td>{{ conta.valor_total_display }}</td>
+            <td>{{ conta.data_emissao_br or 'Sem data' }}</td>
+            <td>
+              <div><strong>Fornecedor:</strong> {{ conta.fornecedor_nome or '—' }}</div>
+              <div><strong>Faturado:</strong> {{ conta.faturado_nome or '—' }}</div>
+            </td>
+            <td>{{ conta.classificacao_resumo }}</td>
+            <td class="table-actions">
+              <button type="button" class="link-button" data-action="open-form" data-form="conta-form-panel" data-record='{{ conta | tojson }}'>Editar</button>
+              <form class="inline-form" method="post" action="{{ url_for('excluir_conta', conta_id=conta.id) }}" onsubmit="return confirm('Deseja marcar esta conta como INATIVO?');">
+                <button type="submit" class="link-button danger">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="7" class="empty-state">Nenhuma conta ativa encontrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/crud.js') }}"></script>
+<script src="{{ url_for('static', filename='js/table_controls.js') }}"></script>
+{% endblock %}

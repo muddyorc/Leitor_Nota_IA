@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Leitor Nota IA{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-title">Leitor Nota IA</span>
+        <span class="brand-subtitle">Gestão inteligente de notas</span>
+      </div>
+      <nav class="app-nav">
+        <a href="{{ url_for('index') }}" class="{% if request.path == url_for('index') %}active{% endif %}">Extração</a>
+        <a href="{{ url_for('consulta_page') }}" class="{% if request.path == url_for('consulta_page') %}active{% endif %}">Consulta RAG</a>
+        <a href="{{ url_for('contas_page') }}" class="{% if request.path.startswith('/contas') %}active{% endif %}">Contas</a>
+        <a href="{{ url_for('pessoas_page') }}" class="{% if request.path.startswith('/pessoas') %}active{% endif %}">Pessoas</a>
+        <a href="{{ url_for('classificacoes_page') }}" class="{% if request.path.startswith('/classificacoes') %}active{% endif %}">Classificações</a>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-container">
+            {% for category, message in messages %}
+              <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

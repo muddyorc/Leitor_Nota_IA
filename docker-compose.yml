@@ -8,6 +8,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       FLASK_DEBUG: 0
+      CHROMA_DIR: /app/_chromadb
     ports:
       - "5000:5000"
     depends_on:
@@ -15,6 +16,7 @@ services:
         condition: service_healthy
     volumes:
       - uploads_data:/app/uploads
+      - chroma_data:/app/_chromadb
 
   db:
     image: postgres:16
@@ -37,3 +39,4 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  chroma_data:
