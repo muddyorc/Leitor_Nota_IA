@@ -1,6 +1,25 @@
-# -----------------------
-# Dependências principais do projeto
-# -----------------------
+#-----------------------
+
+#OTIMIZAÇÃO CRÍTICA PARA RENDER (Modo CPU)
+
+#-----------------------
+
+#Esta linha obriga o pip a buscar versões leves do PyTorch (sem drivers NVIDIA de 3GB)
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+#Precisamos listar o torch explicitamente para garantir que ele pegue a URL acima
+
+torch
+torchvision
+torchaudio
+
+#-----------------------
+
+#Dependências principais do projeto
+
+#-----------------------
+
 Flask>=2.3,<4
 python-dotenv>=1.0,<2
 Faker>=25.0,<27.0
@@ -14,9 +33,13 @@ psycopg2-binary>=2.9,<2.11
 pytest>=7.4,<9
 gunicorn>=22.0,<23
 posthog>=2.4,<6  # compatível com telemetria do ChromaDB
+requests
 
-# -----------------------
-# Dependências para RAG (Etapa 3)
-# -----------------------
+#-----------------------
+
+#Dependências para RAG (Etapa 3)
+
+#-----------------------
+
 chromadb>=0.4.0,<0.6.0
 sentence-transformers>=2.2.2,<3.0
