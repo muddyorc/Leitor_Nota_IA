@@ -25,13 +25,13 @@ if [ "${SKIP_RAG_INDEX:-0}" != "1" ]; then
 fi
 
 # --- 3. Configuração do Servidor Web ---
-APP_MODULE=${APP_MODULE:-main:app} # Confirme se é main:app ou app:app
+APP_MODULE=${APP_MODULE:-app:app} 
 GUNICORN_HOST=0.0.0.0
 GUNICORN_PORT=${PORT:-5000}        # Render injeta a porta automaticamente
 GUNICORN_WORKERS=2                 # Reduzido para 2 para economizar RAM no Free Tier
 GUNICORN_TIMEOUT=120               # Timeout maior para evitar erros 502 na inicialização
 
-echo "✅ Iniciando Gunicorn na porta $GUNICORN_PORT..."
+echo "✅ Iniciando Gunicorn na porta $GUNICORN_PORT com módulo $APP_MODULE..."
 
 # Executa o servidor. Se o banco estiver fora, o erro aparecerá no log do Gunicorn.
 exec gunicorn "$APP_MODULE" \
