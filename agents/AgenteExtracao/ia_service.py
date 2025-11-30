@@ -4,10 +4,22 @@ import google.generativeai as genai
 
 from config.settings import GOOGLE_API_KEY, REGRAS_DE_CLASSIFICACAO
 
-genai.configure(api_key=GOOGLE_API_KEY)
+_CURRENT_API_KEY: str | None = None
 
 
-def extrair_dados_com_llm(texto):
+def _ensure_api_key(api_key: str | None = None) -> str:
+    """Configura o SDK apenas quando houver chave disponível."""
+    global _CURRENT_API_KEY
+    resolved = api_key or GOOGLE_API_KEY
+    if not resolved:
+        raise RuntimeError("Chave da API Gemini não configurada. Informe via variável de ambiente ou interface.")
+    if resolved != _CURRENT_API_KEY:
+        genai.configure(api_key=resolved)
+        _CURRENT_API_KEY = resolved
+    return resolved
+
+
+def extrair_dados_com_llm(texto, api_key: str | None = None):
     categorias_prompt = "\n".join(
         f"- {categoria}: palavras associadas -> {', '.join(palavras)}"
         for categoria, palavras in REGRAS_DE_CLASSIFICACAO.items()
@@ -46,6 +58,7 @@ def extrair_dados_com_llm(texto):
         """
     )
     try:
+        _ensure_api_key(api_key)
         model = genai.GenerativeModel("gemini-2.5-flash-lite", generation_config={"temperature": 0.0})
         response = model.generate_content(prompt)
         if response and response.candidates:
@@ -56,9 +69,10 @@ def extrair_dados_com_llm(texto):
         return None
 
 
-def responder_pergunta_com_llm(prompt: str, *, temperature: float = 0.2) -> str | None:
+def responder_pergunta_com_llm(prompt: str, *, temperature: float = 0.2, api_key: str | None = None) -> str | None:
     """Gera uma resposta textual para consultas RAG usando Gemini."""
     try:
+        _ensure_api_key(api_key)
         model = genai.GenerativeModel(
             "gemini-2.5-flash-lite",
             generation_config={"temperature": temperature},

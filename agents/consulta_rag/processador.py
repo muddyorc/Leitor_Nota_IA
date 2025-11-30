@@ -69,6 +69,7 @@ class ConsultaRagAgent:
         chroma_client=None,
         embed_model=None,
         enable_chroma: bool | None = None,
+        api_key_resolver: Callable[[], str | None] | None = None,
     ):
         self._session_factory = session_factory
         self.persist_agent = PersistenciaAgent(session_factory)
@@ -76,6 +77,7 @@ class ConsultaRagAgent:
         self._chroma_client = chroma_client
         self._embed_model = embed_model
         self._llm_callable = llm_callable or responder_pergunta_com_llm
+        self._api_key_resolver = api_key_resolver
 
         if enable_chroma is None:
             enable_chroma = CHROMA_AVAILABLE
@@ -439,7 +441,8 @@ class ConsultaRagAgent:
             f"Se os dados não forem suficientes, informe que a resposta não pode ser encontrada."
         )
         # Reutiliza a função de consulta ao Gemini configurada para respostas textuais.
-        resposta = self._llm_callable(prompt)
+        api_key = self._resolve_api_key()
+        resposta = self._llm_callable(prompt, api_key=api_key)
         return resposta or "Falha ao gerar resposta via LLM."
 
     def _responder_pergunta_estruturada(self, pergunta: str | None) -> str | None:
@@ -912,8 +915,17 @@ class ConsultaRagAgent:
             f"Responda a seguinte pergunta do usuário: {pergunta}\n\n"
             f"Se os dados não forem suficientes, informe que a resposta não pode ser encontrada."
         )
-        resposta = self._llm_callable(prompt)
+        api_key = self._resolve_api_key()
+        resposta = self._llm_callable(prompt, api_key=api_key)
         return resposta or "Falha ao gerar resposta via LLM."
+
+    def _resolve_api_key(self) -> str | None:
+        if not self._api_key_resolver:
+            return None
+        try:
+            return self._api_key_resolver()
+        except Exception:
+            return None
 
     # ---------------- Index script helper (opcional) ----------------
     def indexar_movimentos_para_chroma(self, k_batch: int = 1000):

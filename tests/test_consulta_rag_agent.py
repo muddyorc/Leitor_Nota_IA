@@ -53,7 +53,7 @@ def test_executar_consulta_simples_utiliza_contexto(session_factory, agente_sem_
 def test_executar_consulta_semantica_sem_chroma_indica_indisponibilidade(session_factory):
     agent = ConsultaRagAgent(
         session_factory=session_factory,
-        llm_callable=lambda prompt: prompt,
+        llm_callable=lambda prompt, **_: prompt,
         enable_chroma=False,
     )
 
@@ -117,7 +117,7 @@ def test_indexar_movimentos_para_chroma_inclui_documentos(session_factory, movim
 
     agent = ConsultaRagAgent(
         session_factory=session_factory,
-        llm_callable=lambda prompt: prompt,
+        llm_callable=lambda prompt, **_: prompt,
         chroma_client=chroma_client,
         embed_model=embed_model,
         enable_chroma=True,

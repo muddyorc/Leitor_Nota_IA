@@ -74,6 +74,8 @@ DB_NAME=notas
 ```
 
 > Se `DATABASE_URL` estiver definido, ele sobrescreve `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` e `DB_NAME`. Use-o para apontar diretamente para o Postgres hospedado no Render.
+>
+> ⚠️ Quando a variável `GOOGLE_API_KEY` não estiver presente (ex.: ambientes compartilhados), utilize a seção **“Configurar chave do Gemini”** disponível nas páginas de Extração e Consulta RAG. A chave é armazenada apenas na sessão do navegador e não é enviada ao GitHub.
 
 ### 🔹 6. Inicializar o Banco de Dados
 
@@ -195,6 +197,12 @@ Configure os seguintes valores no painel do provedor (nunca commite um `.env` co
 ### 5. Frontend na Vercel (opcional)
 
 Este projeto usa Flask + Jinja para servir o frontend. Só utilize a Vercel caso você extraia as telas para um SPA (React/Vue). Nesse cenário, exponha apenas a API Flask (Render/PythonAnywhere) e configure as origens permitidas.
+
+---
+
+## 📗 Manual de acesso
+
+Consulte `MANUAL_ACESSO.md` para encontrar (e atualizar) os links públicos, passos de validação e orientações sobre credenciais/chaves antes da entrega final.
 
 ---
 

@@ -4,9 +4,9 @@ import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import or_
-from config.settings import UPLOAD_FOLDER
+from config.settings import GOOGLE_API_KEY, UPLOAD_FOLDER
 from agents.AgenteExtracao.parser_service import extrair_texto_pdf
 from agents.AgenteExtracao.ia_service import extrair_dados_com_llm
 from agents.AgenteExtracao.utils import gerar_parcela_padrao
@@ -22,8 +22,11 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 
+def _resolve_api_key() -> str | None:
+    return session.get("gemini_api_key") or GOOGLE_API_KEY
+
 persistencia_agent = PersistenciaAgent()
-consulta_agent = ConsultaRagAgent()  # ✅ nova instância do agente de consulta
+consulta_agent = ConsultaRagAgent(api_key_resolver=_resolve_api_key)  # ✅ nova instância do agente de consulta
     
 def _parse_decimal(valor: str | None) -> Decimal | None:
     if not valor:
@@ -68,6 +71,31 @@ def _tokenize_search(value: str | None) -> list[str]:
     tokens = [item.strip() for item in re.split(r"[\s,]+", value) if item.strip()]
     return tokens
 
+
+@app.route('/configurar_api_key', methods=['POST'])
+def configurar_api_key():
+    try:
+        payload = request.get_json(force=True)
+    except Exception:
+        return {"error": "JSON inválido"}, 400
+
+    chave = ""
+    if isinstance(payload, dict):
+        chave = (payload.get('apiKey') or '').strip()
+
+    if not chave:
+        session.pop('gemini_api_key', None)
+        return {"mensagem": "Chave removida. Defina GOOGLE_API_KEY ou informe uma nova chave."}, 200
+
+    session['gemini_api_key'] = chave
+    session.permanent = True
+    return {"mensagem": "Chave configurada para esta sessão."}, 200
+
+
+@app.route('/status_api_key', methods=['GET'])
+def status_api_key():
+    return {"hasKey": bool(_resolve_api_key())}
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -81,11 +109,21 @@ def extrair():
     if file.filename == '' or not file.filename.lower().endswith('.pdf'):
         return {"error": "Arquivo inválido"}, 400
 
+    api_key = _resolve_api_key()
+    if not api_key:
+        return {
+            "error": "Configure a chave do Gemini antes de extrair.",
+            "detalhes": "Defina GOOGLE_API_KEY ou informe sua chave na interface.",
+        }, 400
+
     texto_pdf = extrair_texto_pdf(file)
     if not texto_pdf:
         return {"error": "Não foi possível extrair texto do PDF"}, 500
 
-    raw_json_str = extrair_dados_com_llm(texto_pdf)
+    try:
+        raw_json_str = extrair_dados_com_llm(texto_pdf, api_key=api_key)
+    except RuntimeError as exc:
+        return {"error": str(exc)}, 400
     if not raw_json_str:
         return {"error": "Falha na comunicação com Gemini"}, 500
 
@@ -150,6 +188,12 @@ def consultar_rag():
 
     if not pergunta or not isinstance(pergunta, str):
         return {"error": "Pergunta inválida"}, 400
+
+    if not _resolve_api_key():
+        return {
+            "error": "Configure a chave do Gemini para executar consultas RAG.",
+            "detalhes": "Use a seção 'Configurar chave do Gemini' ou a variável GOOGLE_API_KEY.",
+        }, 400
 
     try:
         if modo == 'semantico':

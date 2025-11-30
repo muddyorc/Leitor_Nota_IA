@@ -44,9 +44,15 @@ def app_client(monkeypatch):
     }
 
     monkeypatch.setattr("app.extrair_texto_pdf", lambda _: "texto fake")
-    monkeypatch.setattr("app.extrair_dados_com_llm", lambda _texto: json.dumps(sample_payload))
+
+    def _fake_llm(_texto, **_kwargs):
+        return json.dumps(sample_payload)
+
+    monkeypatch.setattr("app.extrair_dados_com_llm", _fake_llm)
 
     client = app.test_client()
+    with client.session_transaction() as sess:
+        sess["gemini_api_key"] = "fake-key"
 
     yield client, session_factory, sample_payload
 
@@ -112,7 +118,7 @@ def test_extrair_falha_extracao_pdf_retorna_500(app_client, monkeypatch):
 
 def test_extrair_falha_gemini_retorna_500(app_client, monkeypatch):
     client, *_ = app_client
-    monkeypatch.setattr("app.extrair_dados_com_llm", lambda _texto: None)
+    monkeypatch.setattr("app.extrair_dados_com_llm", lambda _texto, **_kw: None)
 
     response = client.post(
         "/extrair",
@@ -126,7 +132,7 @@ def test_extrair_falha_gemini_retorna_500(app_client, monkeypatch):
 
 def test_extrair_json_invalido_retorna_500(app_client, monkeypatch):
     client, *_ = app_client
-    monkeypatch.setattr("app.extrair_dados_com_llm", lambda _texto: "{invalido")
+    monkeypatch.setattr("app.extrair_dados_com_llm", lambda _texto, **_kw: "{invalido")
 
     response = client.post(
         "/extrair",
