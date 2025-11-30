@@ -6,7 +6,7 @@ Este guia resume os links e os passos mínimos para validar a entrega em produç
 - GitHub (público): https://github.com/muddyorc/Leitor_Nota_IA
 
 ## ☁️ Aplicação hospedada
-- Render (backend Flask + UI): **Atualize aqui com a URL gerada após o deploy** (ex.: `https://nota-ia.onrender.com`).
+- Render (backend Flask + UI): [Leitor Nota IA](https://leitor-nota-ia.onrender.com/)
 - Status esperado: após o deploy, acessar a URL deve exibir a dashboard "Leitor Nota IA".
 
 > ⚠️ Caso utilize outro provedor (PythonAnywhere, etc.), substitua pelo link correspondente.
