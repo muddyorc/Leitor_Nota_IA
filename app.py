@@ -15,8 +15,8 @@ from database.connection import SessionLocal
 from database.models import Classificacao, MovimentoContas, Pessoas
 
 
-# ✅ novo import — agente de consulta RAG
-from agents.consulta_rag.processador import ConsultaRagAgent
+# ✅ lazy import — agente de consulta RAG (only loaded when /consulta is accessed)
+# from agents.consulta_rag.processador import ConsultaRagAgent
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -26,7 +26,15 @@ def _resolve_api_key() -> str | None:
     return session.get("gemini_api_key") or GOOGLE_API_KEY
 
 persistencia_agent = PersistenciaAgent()
-consulta_agent = ConsultaRagAgent(api_key_resolver=_resolve_api_key)  # ✅ nova instância do agente de consulta
+_consulta_agent = None  # Lazy-loaded on first use
+
+def _get_consulta_agent():
+    """Lazy load ConsultaRagAgent on first access."""
+    global _consulta_agent
+    if _consulta_agent is None:
+        from agents.consulta_rag.processador import ConsultaRagAgent
+        _consulta_agent = ConsultaRagAgent(api_key_resolver=_resolve_api_key)
+    return _consulta_agent
     
 def _parse_decimal(valor: str | None) -> Decimal | None:
     if not valor:
@@ -197,9 +205,9 @@ def consultar_rag():
 
     try:
         if modo == 'semantico':
-            resposta = consulta_agent.executar_consulta_semantica(pergunta)
+            resposta = _get_consulta_agent().executar_consulta_semantica(pergunta)
         else:
-            resposta = consulta_agent.executar_consulta_simples(pergunta)
+            resposta = _get_consulta_agent().executar_consulta_simples(pergunta)
     except Exception as exc:
         print(f"Erro ao processar RAG: {exc}")
         return {"error": "Falha na consulta RAG", "detalhes": str(exc)}, 500

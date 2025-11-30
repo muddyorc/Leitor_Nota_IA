@@ -1,15 +1,24 @@
 import textwrap
 
-import google.generativeai as genai
-
 from config.settings import GOOGLE_API_KEY, REGRAS_DE_CLASSIFICACAO
 
 _CURRENT_API_KEY: str | None = None
+_GENAI_MODULE = None  # Lazy-loaded on first use
+
+
+def _ensure_genai():
+    """Lazy load google.generativeai only when needed."""
+    global _GENAI_MODULE
+    if _GENAI_MODULE is None:
+        import google.generativeai as genai
+        _GENAI_MODULE = genai
+    return _GENAI_MODULE
 
 
 def _ensure_api_key(api_key: str | None = None) -> str:
     """Configura o SDK apenas quando houver chave disponível."""
     global _CURRENT_API_KEY
+    genai = _ensure_genai()
     resolved = api_key or GOOGLE_API_KEY
     if not resolved:
         raise RuntimeError("Chave da API Gemini não configurada. Informe via variável de ambiente ou interface.")
@@ -59,6 +68,7 @@ def extrair_dados_com_llm(texto, api_key: str | None = None):
     )
     try:
         _ensure_api_key(api_key)
+        genai = _ensure_genai()
         model = genai.GenerativeModel("gemini-2.5-flash-lite", generation_config={"temperature": 0.0})
         response = model.generate_content(prompt)
         if response and response.candidates:
@@ -73,6 +83,7 @@ def responder_pergunta_com_llm(prompt: str, *, temperature: float = 0.2, api_key
     """Gera uma resposta textual para consultas RAG usando Gemini."""
     try:
         _ensure_api_key(api_key)
+        genai = _ensure_genai()
         model = genai.GenerativeModel(
             "gemini-2.5-flash-lite",
             generation_config={"temperature": temperature},

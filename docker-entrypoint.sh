@@ -28,15 +28,17 @@ fi
 APP_MODULE=${APP_MODULE:-app:app} 
 GUNICORN_HOST=0.0.0.0
 GUNICORN_PORT=${PORT:-5000}        # Render injeta a porta automaticamente
-GUNICORN_WORKERS=2                 # Reduzido para 2 para economizar RAM no Free Tier
+GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}     # 1 worker para economizar RAM (IA libs carregadas uma vez)
+GUNICORN_THREADS=${GUNICORN_THREADS:-4}     # 4 threads para manter concorrência sem RAM extra
 GUNICORN_TIMEOUT=120               # Timeout maior para evitar erros 502 na inicialização
 
-echo "✅ Iniciando Gunicorn na porta $GUNICORN_PORT com módulo $APP_MODULE..."
+echo "✅ Iniciando Gunicorn na porta $GUNICORN_PORT com ${GUNICORN_WORKERS} worker(s) e ${GUNICORN_THREADS} thread(s)..."
 
-# Executa o servidor. Se o banco estiver fora, o erro aparecerá no log do Gunicorn.
+# Executa o servidor com modelo threaded. Se o banco estiver fora, o erro aparecerá no log do Gunicorn.
 exec gunicorn "$APP_MODULE" \
     --bind "${GUNICORN_HOST}:${GUNICORN_PORT}" \
     --workers "${GUNICORN_WORKERS}" \
+    --threads "${GUNICORN_THREADS}" \
     --timeout "${GUNICORN_TIMEOUT}" \
     --access-logfile '-' \
     --error-logfile '-'

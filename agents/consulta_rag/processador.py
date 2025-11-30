@@ -16,13 +16,8 @@ import os
 
 from database.models import Classificacao, MovimentoContas, ParcelasContas, Pessoas
 
-# --- optional imports for semantic retrieval (only used if installed) ---
-try:
-    import chromadb
-    from sentence_transformers import SentenceTransformer
-    CHROMA_AVAILABLE = True
-except Exception:
-    CHROMA_AVAILABLE = False
+# --- lazy imports for semantic retrieval (heavy libs, loaded only when needed) ---
+CHROMA_AVAILABLE = True  # assume available unless proven otherwise
 
 # Use your existing ia wrapper to call Gemini
 from agents.AgenteExtracao.ia_service import responder_pergunta_com_llm  # Gemini wrapper adaptado para respostas textuais
@@ -256,8 +251,17 @@ class ConsultaRagAgent:
         return date(hoje.year, first_month, 1)
 
     def _init_chroma(self):
-        # initializes chroma client and embedder if available
+        # initializes chroma client and embedder if available (lazy loading)
         if not self._enable_chroma:
+            return
+
+        try:
+            # Lazy import: only load when actually needed
+            import chromadb
+            from sentence_transformers import SentenceTransformer
+        except ImportError as e:
+            print(f"ChromaDB ou SentenceTransformer não disponíveis: {e}")
+            self._enable_chroma = False
             return
 
         persist_path = Path(self.chroma_dir).resolve()
